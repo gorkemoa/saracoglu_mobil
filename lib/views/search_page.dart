@@ -3,11 +3,8 @@ import '../theme/app_theme.dart';
 
 class SearchPage extends StatefulWidget {
   final bool showBackButton;
-  
-  const SearchPage({
-    super.key,
-    this.showBackButton = false,
-  });
+
+  const SearchPage({super.key, this.showBackButton = false});
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -23,7 +20,7 @@ class _SearchPageState extends State<SearchPage> {
       'title': 'Çörek Otu Yağı Soğuk Sıkım 100ml',
       'weight': '100ml',
       'price': 189.90,
-      'imageUrl': 'assets/urunler/corekotu.png',
+      'imageUrl': 'assets/kategorileri/soguksikimyaglar.png',
       'badgeText': '2. Ürün %10',
       'badgeColor': const Color(0xFFFF5722),
       'isAsset': true,
@@ -32,7 +29,7 @@ class _SearchPageState extends State<SearchPage> {
       'title': 'Ihlamur Yaprak Doğal 50g',
       'weight': '50g',
       'price': 79.90,
-      'imageUrl': 'assets/urunler/ihlamur.png',
+      'imageUrl': 'assets/kategorileri/dogalbitkiler.png',
       'badgeText': 'Kargo Bedava',
       'badgeColor': const Color(0xFF333333),
       'isAsset': true,
@@ -41,7 +38,7 @@ class _SearchPageState extends State<SearchPage> {
       'title': 'Organik Ham Bal 450g',
       'weight': '450g',
       'price': 329.90,
-      'imageUrl': 'assets/urunler/bal.png',
+      'imageUrl': 'assets/kategorileri/dogalgidaveicecekler.png',
       'badgeText': 'Çok Satan',
       'badgeColor': const Color(0xFFFF5722),
       'sponsorlu': true,
@@ -51,7 +48,7 @@ class _SearchPageState extends State<SearchPage> {
       'title': 'Lavanta Yağı Saf 50ml',
       'weight': '50ml',
       'price': 149.90,
-      'imageUrl': 'assets/urunler/lavanta.png',
+      'imageUrl': 'assets/kategorileri/aromaterapi.png',
       'badgeText': 'Yeni',
       'badgeColor': const Color(0xFF4CAF50),
       'isAsset': true,
@@ -60,12 +57,12 @@ class _SearchPageState extends State<SearchPage> {
 
   // Önceden Gezdiklerim
   final List<Map<String, dynamic>> _recentlyViewed = [
-    {'image': 'assets/urunler/corekotu.png', 'isAsset': true},
-    {'image': 'assets/urunler/ihlamur.png', 'isAsset': true},
-    {'image': 'assets/urunler/bal.png', 'isAsset': true},
-    {'image': 'assets/urunler/lavanta.png', 'isAsset': true},
-    {'image': 'assets/urunler/kekik.png', 'isAsset': true},
-    {'image': 'assets/urunler/adacayi.png', 'isAsset': true},
+    {'image': 'assets/kategorileri/soguksikimyaglar.png', 'isAsset': true},
+    {'image': 'assets/kategorileri/dogalbitkiler.png', 'isAsset': true},
+    {'image': 'assets/kategorileri/dogalgidaveicecekler.png', 'isAsset': true},
+    {'image': 'assets/kategorileri/aromaterapi.png', 'isAsset': true},
+    {'image': 'assets/kategorileri/ciltvevucuturunleri.png', 'isAsset': true},
+    {'image': 'assets/kategorileri/organikkozmatik.png', 'isAsset': true},
   ];
 
   // Popüler Aramalar
@@ -110,13 +107,14 @@ class _SearchPageState extends State<SearchPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: AppSpacing.lg),
+                    _buildRecentlyViewed(),
+
+                    SizedBox(height: AppSpacing.xl),
                     _buildSpecialProducts(),
                     SizedBox(height: AppSpacing.xl),
-                    _buildRecentlyViewed(),
-                    SizedBox(height: AppSpacing.xl),
                     _buildPopularSearches(),
+
                     SizedBox(height: AppSpacing.xl),
-                   
                   ],
                 ),
               ),
@@ -129,7 +127,7 @@ class _SearchPageState extends State<SearchPage> {
 
   Widget _buildSearchHeader() {
     return Container(
-      color: AppColors.surface,
+      color: Colors.white,
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -141,65 +139,67 @@ class _SearchPageState extends State<SearchPage> {
             child: Container(
               height: 44,
               decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: AppRadius.borderRadiusSM,
-                border: Border.all(color: AppColors.border),
+                color: Color(0xFFF2F2F2),
+                borderRadius: BorderRadius.circular(22),
               ),
+              padding: EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  SizedBox(width: AppSpacing.md),
-                  Icon(Icons.search, color: AppColors.textTertiary, size: 22),
-                  SizedBox(width: AppSpacing.sm),
+                  Icon(Icons.search, color: Colors.grey.shade600, size: 20),
+                  SizedBox(width: 8),
+
                   Expanded(
                     child: TextField(
-                      controller: _searchController,
-                      focusNode: _searchFocusNode,
                       decoration: InputDecoration(
-                        hintText: 'Marka, ürün veya kategori ara',
-                        hintStyle: AppTypography.bodyMedium.copyWith(
-                          color: AppColors.textTertiary,
+                        hintText: "Marka, ürün veya kategori ara",
+                        hintStyle: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
                         ),
+
+                        // Çizgiyi %100 yok eden kısım:
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        disabledBorder: InputBorder.none,
+
+                        isCollapsed: true,
                         contentPadding: EdgeInsets.zero,
-                        isDense: true,
+                        filled: false,
                       ),
-                      style: AppTypography.bodyMedium,
+                      style: TextStyle(fontSize: 15, color: Colors.black),
                     ),
                   ),
-                  SizedBox(width: AppSpacing.sm),
-                  // Kamera ikonu
-                  GestureDetector(
-                    onTap: () {
-                      // Görsel arama
-                    },
-                    child: Container(
-                      padding: EdgeInsets.all(AppSpacing.sm),
-                      child: Icon(
-                        Icons.camera_alt_outlined,
-                        color: AppColors.textTertiary,
-                        size: 22,
-                      ),
-                    ),
+
+                  SizedBox(width: 8),
+                  Icon(
+                    Icons.camera_alt_outlined,
+                    color: Colors.grey.shade600,
+                    size: 20,
                   ),
                 ],
               ),
             ),
           ),
           SizedBox(width: AppSpacing.md),
-          // Vazgeç butonu - sadece showBackButton true ise göster
-          if (widget.showBackButton)
-            GestureDetector(
-              onTap: () {
+          GestureDetector(
+            onTap: () {
+              if (widget.showBackButton) {
                 Navigator.pop(context);
-              },
-              child: Text(
-                'Vazgeç',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
+              } else {
+                _searchController.clear();
+                FocusScope.of(context).unfocus();
+              }
+            },
+            child: Text(
+              'Ara',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
             ),
+          ),
         ],
       ),
     );
@@ -216,9 +216,7 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               Text(
                 'Sana Özel Ürünler',
-                style: AppTypography.h5.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTypography.h5.copyWith(fontWeight: FontWeight.bold),
               ),
               GestureDetector(
                 onTap: () {
@@ -251,7 +249,8 @@ class _SearchPageState extends State<SearchPage> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             itemCount: _specialProducts.length,
-            separatorBuilder: (context, index) => SizedBox(width: AppSpacing.sm),
+            separatorBuilder: (context, index) =>
+                SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
               final product = _specialProducts[index];
               return _buildSpecialProductCard(product);
@@ -266,7 +265,7 @@ class _SearchPageState extends State<SearchPage> {
     final bool isSponsored = product['sponsorlu'] == true;
     final bool isAsset = product['isAsset'] == true;
     final String imageUrl = product['imageUrl'] ?? '';
-    
+
     return Container(
       width: 140,
       decoration: BoxDecoration(
@@ -288,31 +287,35 @@ class _SearchPageState extends State<SearchPage> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
                 ),
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(8),
+                  ),
                   child: isAsset
                       ? Image.asset(
                           imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: Colors.grey.shade100,
-                            child: Icon(
-                              Icons.spa_outlined,
-                              color: AppColors.primary.withOpacity(0.3),
-                              size: 40,
-                            ),
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey.shade100,
+                                child: Icon(
+                                  Icons.spa_outlined,
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  size: 40,
+                                ),
+                              ),
                         )
                       : Image.network(
                           imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: Colors.grey.shade100,
-                            child: Icon(
-                              Icons.spa_outlined,
-                              color: AppColors.primary.withOpacity(0.3),
-                              size: 40,
-                            ),
-                          ),
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                                color: Colors.grey.shade100,
+                                child: Icon(
+                                  Icons.spa_outlined,
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  size: 40,
+                                ),
+                              ),
                         ),
                 ),
               ),
@@ -322,7 +325,10 @@ class _SearchPageState extends State<SearchPage> {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
                       borderRadius: BorderRadius.circular(4),
@@ -406,9 +412,7 @@ class _SearchPageState extends State<SearchPage> {
             children: [
               Text(
                 'Önceden Gezdiklerim',
-                style: AppTypography.h5.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTypography.h5.copyWith(fontWeight: FontWeight.bold),
               ),
               GestureDetector(
                 onTap: () {
@@ -441,7 +445,8 @@ class _SearchPageState extends State<SearchPage> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             itemCount: _recentlyViewed.length,
-            separatorBuilder: (context, index) => SizedBox(width: AppSpacing.sm),
+            separatorBuilder: (context, index) =>
+                SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
               return _buildRecentlyViewedItem(_recentlyViewed[index]);
             },
@@ -454,7 +459,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildRecentlyViewedItem(Map<String, dynamic> item) {
     final String imageUrl = item['image'] ?? '';
     final bool isAsset = item['isAsset'] == true;
-    
+
     return GestureDetector(
       onTap: () {
         // Ürün detayına git
@@ -522,9 +527,7 @@ class _SearchPageState extends State<SearchPage> {
               SizedBox(width: AppSpacing.sm),
               Text(
                 'Popüler Aramalar',
-                style: AppTypography.h5.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: AppTypography.h5.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -536,7 +539,8 @@ class _SearchPageState extends State<SearchPage> {
             scrollDirection: Axis.horizontal,
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
             itemCount: _popularSearches.length,
-            separatorBuilder: (context, index) => SizedBox(width: AppSpacing.sm),
+            separatorBuilder: (context, index) =>
+                SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
               final search = _popularSearches[index];
               return _buildPopularSearchChip(
@@ -588,5 +592,4 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
-
 }

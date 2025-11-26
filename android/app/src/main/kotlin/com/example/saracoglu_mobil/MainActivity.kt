@@ -1,4 +1,4 @@
-package com.example.saracoglu_mobil
+package com.office701.saracoglu
 
 import io.flutter.embedding.android.FlutterActivity
 
