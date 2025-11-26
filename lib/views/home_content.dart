@@ -2,17 +2,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
-import 'search_page.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeContent extends StatefulWidget {
+  final VoidCallback? onSearchTap;
+  
+  const HomeContent({
+    super.key,
+    this.onSearchTap,
+  });
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomeContent> createState() => _HomeContentState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+class _HomeContentState extends State<HomeContent> {
   int _currentBannerIndex = 0;
   final PageController _bannerController = PageController();
   Timer? _bannerTimer;
@@ -83,7 +86,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
@@ -190,12 +192,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildSearchBar() {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const SearchPage()),
-        );
-      },
+      onTap: widget.onSearchTap,
       child: Container(
         padding: EdgeInsets.all(AppSpacing.md),
         color: AppColors.surface,
@@ -729,87 +726,6 @@ class _HomePageState extends State<HomePage> {
                 onFavorite: () {},
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-
-
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: AppShadows.shadowNavBar,
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.sm,
-            vertical: AppSpacing.sm,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home, "Ana Sayfa", 0),
-              _buildNavItem(Icons.search, "Ara", 1),
-              _buildNavItem(Icons.favorite_border, "Favorilerim", 2),
-              _buildNavItem(Icons.shopping_cart_outlined, "Sepetim", 3, badge: "3"),
-              _buildNavItem(Icons.person_outline, "Hesabım", 4),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index, {String? badge}) {
-    final isSelected = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () {
-        if (index == 1) {
-          // Ara butonuna tıklandığında SearchPage'e git
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SearchPage()),
-          );
-        } else {
-          setState(() => _selectedIndex = index);
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? AppColors.primary : AppColors.textTertiary,
-                size: AppSizes.iconLG,
-              ),
-              if (badge != null)
-                Positioned(
-                  right: -4,
-                  top: -4,
-                  child: Container(
-                    padding: EdgeInsets.all(AppSpacing.xs),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(badge, style: AppTypography.badge),
-                  ),
-                ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.xs),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: isSelected ? AppColors.primary : AppColors.textTertiary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
           ),
         ],
       ),

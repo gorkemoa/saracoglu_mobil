@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:saracoglu_mobil/views/homepage_views.dart';
+import 'package:saracoglu_mobil/views/main_screen.dart';
 import 'package:saracoglu_mobil/theme/app_theme.dart';
 
 void main() {
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Saraçoğlu',
       debugShowCheckedModeBanner: false,
       theme: getAppTheme(),
-      home: const HomePage(),
+      home: const MainScreen(),
     );
   }
 }
