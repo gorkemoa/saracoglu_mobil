@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../widgets/product_card.dart';
 
 class SearchPage extends StatefulWidget {
   final bool showBackButton;
@@ -243,161 +244,30 @@ class _SearchPageState extends State<SearchPage> {
           ),
         ),
         SizedBox(height: AppSpacing.md),
-        SizedBox(
-          height: 230,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            itemCount: _specialProducts.length,
-            separatorBuilder: (context, index) =>
-                SizedBox(width: AppSpacing.sm),
-            itemBuilder: (context, index) {
-              final product = _specialProducts[index];
-              return _buildSpecialProductCard(product);
-            },
-          ),
+        ProductCardList(
+          height: 330,
+          products: _specialProducts.map((product) {
+            return ProductCard(
+              title: product['title'],
+              weight: product['weight'],
+              price: product['price'],
+              imageUrl: product['imageUrl'],
+              isAssetImage: product['isAsset'] == true,
+              badgeText: product['badgeText'],
+              badgeColor: product['badgeColor'],
+              onTap: () {
+                // Ürün detayına git
+              },
+              onAddToCart: () {
+                // Sepete ekle
+              },
+              onFavorite: () {
+                // Favorilere ekle
+              },
+            );
+          }).toList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildSpecialProductCard(Map<String, dynamic> product) {
-    final bool isSponsored = product['sponsorlu'] == true;
-    final bool isAsset = product['isAsset'] == true;
-    final String imageUrl = product['imageUrl'] ?? '';
-
-    return Container(
-      width: 140,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Görsel
-          Stack(
-            children: [
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-                ),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(8),
-                  ),
-                  child: isAsset
-                      ? Image.asset(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: Colors.grey.shade100,
-                                child: Icon(
-                                  Icons.spa_outlined,
-                                  color: AppColors.primary.withOpacity(0.3),
-                                  size: 40,
-                                ),
-                              ),
-                        )
-                      : Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: Colors.grey.shade100,
-                                child: Icon(
-                                  Icons.spa_outlined,
-                                  color: AppColors.primary.withOpacity(0.3),
-                                  size: 40,
-                                ),
-                              ),
-                        ),
-                ),
-              ),
-              // Sponsorlu etiketi
-              if (isSponsored)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Sponsorlu',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              // Badge
-              if (product['badgeText'] != null)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      color: product['badgeColor'] ?? const Color(0xFFFF5722),
-                    ),
-                    child: Text(
-                      product['badgeText'],
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          // Bilgiler
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  product['title'],
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${product['price'].toStringAsFixed(2).replaceAll('.', ',')} TL',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFF5722),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

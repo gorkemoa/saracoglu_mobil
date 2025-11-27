@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
+import 'product_detail_page.dart'; 
 
 class HomeContent extends StatefulWidget {
   final VoidCallback? onSearchTap;
@@ -61,6 +62,17 @@ class _HomeContentState extends State<HomeContent> {
     super.dispose();
   }
 
+  void _navigateToProductDetail(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetailPage(
+        
+        ),  
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,7 +82,6 @@ class _HomeContentState extends State<HomeContent> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTopBar(),
               _buildHeader(),
               _buildSearchBar(),
               _buildInfoBanners(),
@@ -89,44 +100,7 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildTopBar() {
-    return Container(
-      color: AppColors.primary,
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.local_shipping_outlined, color: AppColors.textOnPrimary, size: 14),
-              SizedBox(width: AppSpacing.xs),
-              Text(
-                "Sipariş ve Kargo Takibi",
-                style: AppTypography.labelSmall.copyWith(color: AppColors.textOnPrimary),
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              _buildSocialIcon(Icons.facebook),
-              SizedBox(width: AppSpacing.sm),
-              _buildSocialIcon(Icons.camera_alt),
-              SizedBox(width: AppSpacing.sm),
-              _buildSocialIcon(Icons.play_arrow),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSocialIcon(IconData icon) {
-    return Icon(icon, color: AppColors.textOnPrimary, size: 16);
-  }
-
+ 
   Widget _buildHeader() {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -575,15 +549,16 @@ class _HomeContentState extends State<HomeContent> {
           ProductCardList(
             products: [
               ProductCard(
-                title: "Çörek Otu Yağı Soğuk Sıkım",
-                weight: "100ml",
-                price: 64.90,
-                oldPrice: 89.90,
+                title: "Pro-Allium Soğan Sebze Suyu",
+                weight: "60ml x 5 adet",
+                price: 440.00,
+                oldPrice: 550.00,
                 imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400",
                 rating: 4.4,
                 reviewCount: 259,
                 badgeText: "KAMPANYA",
                 badgeColor: const Color(0xFF7B2CBF),
+                onTap: () => _navigateToProductDetail(context),
                 onAddToCart: () {},
                 onFavorite: () {},
               ),
@@ -597,6 +572,7 @@ class _HomeContentState extends State<HomeContent> {
                 reviewCount: 182,
                 badgeText: "KAMPANYA",
                 badgeColor: const Color(0xFF7B2CBF),
+                onTap: () => _navigateToProductDetail(context),
                 onAddToCart: () {},
                 onFavorite: () {},
               ),
@@ -608,6 +584,7 @@ class _HomeContentState extends State<HomeContent> {
                 imageUrl: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=400",
                 rating: 4.8,
                 reviewCount: 95,
+                onTap: () => _navigateToProductDetail(context),
                 onAddToCart: () {},
                 onFavorite: () {},
               ),
@@ -618,6 +595,7 @@ class _HomeContentState extends State<HomeContent> {
                 imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400",
                 rating: 4.9,
                 reviewCount: 312,
+                onTap: () => _navigateToProductDetail(context),
                 onAddToCart: () {},
                 onFavorite: () {},
               ),

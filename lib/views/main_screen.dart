@@ -51,7 +51,7 @@ class _MainScreenState extends State<MainScreen> {
           const ProfilePage(),
         ],
       ),
-      floatingActionButton: Column(
+      floatingActionButton: _currentIndex == 0 ? Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -174,7 +174,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
         ],
-      ),
+      ) : null,
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
         onTap: _onTabTapped,

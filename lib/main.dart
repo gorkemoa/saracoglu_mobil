@@ -11,11 +11,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Saraçoğlu',
-      debugShowCheckedModeBanner: false,
-      theme: getAppTheme(),
-      home: const MainScreen(),
+    return GestureDetector(
+      onTap: () {
+        // Herhangi bir yere dokunulduğunda klavyeyi kapat
+        FocusManager.instance.primaryFocus?.unfocus();
+      },
+      child: MaterialApp(
+        title: 'Saraçoğlu',
+        debugShowCheckedModeBanner: false,
+        theme: getAppTheme(),
+        home: const MainScreen(),
+      ),
     );
   }
 }

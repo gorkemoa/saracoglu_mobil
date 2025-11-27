@@ -204,12 +204,11 @@ class ProfilePage extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
                 borderRadius: AppRadius.borderRadiusSM,
               ),
               child: Icon(
                 item.icon,
-                color: AppColors.primary,
+                color: AppColors.textSecondary,
                 size: 20,
               ),
             ),
