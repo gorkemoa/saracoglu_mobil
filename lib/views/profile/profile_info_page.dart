@@ -1,26 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
-
-class UserProfile {
-  String firstName;
-  String lastName;
-  String email;
-  String phone;
-  DateTime? birthDate;
-  String? gender;
-
-  UserProfile({
-    required this.firstName,
-    required this.lastName,
-    required this.email,
-    required this.phone,
-    this.birthDate,
-    this.gender,
-  });
-
-  String get fullName => '$firstName $lastName';
-}
+import '../../services/auth_service.dart';
+import '../../models/user/user_model.dart';
 
 class ProfileInfoPage extends StatefulWidget {
   const ProfileInfoPage({super.key});
@@ -31,44 +13,84 @@ class ProfileInfoPage extends StatefulWidget {
 
 class _ProfileInfoPageState extends State<ProfileInfoPage> {
   final _formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
   bool _isEditing = false;
-  
+  bool _isLoading = false;
+
   late TextEditingController _firstNameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  
+
   String? _selectedGender;
   DateTime? _selectedBirthDate;
-
-  final UserProfile _profile = UserProfile(
-    firstName: 'Ahmet',
-    lastName: 'Yılmaz',
-    email: 'ahmet.yilmaz@email.com',
-    phone: '0532 123 45 67',
-    birthDate: DateTime(1990, 5, 15),
-    gender: 'Erkek',
-  );
 
   @override
   void initState() {
     super.initState();
-    _firstNameController = TextEditingController(text: _profile.firstName);
-    _lastNameController = TextEditingController(text: _profile.lastName);
-    _emailController = TextEditingController(text: _profile.email);
-    _phoneController = TextEditingController(text: _profile.phone);
-    _selectedGender = _profile.gender;
-    _selectedBirthDate = _profile.birthDate;
+    _initControllers();
+    _authService.addListener(_onUserChanged);
+  }
+
+  void _initControllers() {
+    final user = _authService.currentUser;
+
+    _firstNameController = TextEditingController(text: user?.firstName ?? '');
+    _lastNameController = TextEditingController(text: user?.lastName ?? '');
+    _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController = TextEditingController(text: user?.phone ?? '');
+    _selectedGender = user?.gender;
+    _selectedBirthDate = _parseBirthday(user?.birthday);
+  }
+
+  DateTime? _parseBirthday(String? birthday) {
+    if (birthday == null || birthday.isEmpty) return null;
+    try {
+      // Format: "01.12.2025"
+      final parts = birthday.split('.');
+      if (parts.length == 3) {
+        return DateTime(
+          int.parse(parts[2]),
+          int.parse(parts[1]),
+          int.parse(parts[0]),
+        );
+      }
+    } catch (e) {
+      // Parse hatası
+    }
+    return null;
+  }
+
+  void _onUserChanged() {
+    if (mounted && !_isEditing) {
+      _updateControllersFromUser();
+      setState(() {});
+    }
+  }
+
+  void _updateControllersFromUser() {
+    final user = _authService.currentUser;
+    if (user != null) {
+      _firstNameController.text = user.firstName ?? '';
+      _lastNameController.text = user.lastName ?? '';
+      _emailController.text = user.email ?? '';
+      _phoneController.text = user.phone ?? '';
+      _selectedGender = user.gender;
+      _selectedBirthDate = _parseBirthday(user.birthday);
+    }
   }
 
   @override
   void dispose() {
+    _authService.removeListener(_onUserChanged);
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     super.dispose();
   }
+
+  UserModel? get _user => _authService.currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +106,11 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
             scrolledUnderElevation: 2,
             leading: IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
+              icon: Icon(
+                Icons.arrow_back_ios,
+                color: AppColors.textPrimary,
+                size: 20,
+              ),
             ),
             title: Text(
               'Profil Bilgilerim',
@@ -92,45 +118,69 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
             ),
             centerTitle: true,
             actions: [
-              TextButton(
-                onPressed: () {
-                  if (_isEditing) {
-                    _saveProfile();
-                  } else {
-                    setState(() => _isEditing = true);
-                  }
-                },
-                child: Text(
-                  _isEditing ? 'Kaydet' : 'Düzenle',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+              if (_isLoading)
+                Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: AppSpacing.md),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                TextButton(
+                  onPressed: () {
+                    if (_isEditing) {
+                      _saveProfile();
+                    } else {
+                      setState(() => _isEditing = true);
+                    }
+                  },
+                  child: Text(
+                    _isEditing ? 'Kaydet' : 'Düzenle',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
 
           // Profil Avatarı
-          SliverToBoxAdapter(
-            child: _buildProfileAvatar(),
-          ),
+          SliverToBoxAdapter(child: _buildProfileAvatar()),
 
           // Form
-          SliverToBoxAdapter(
-            child: _buildProfileForm(),
-          ),
+          SliverToBoxAdapter(child: _buildProfileForm()),
 
-          SliverToBoxAdapter(
-            child: SizedBox(height: AppSpacing.xxl),
-          ),
+          SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
         ],
       ),
     );
   }
 
   Widget _buildProfileAvatar() {
+    final user = _user;
+
+    // Baş harfler
+    String initials = 'K';
+    if (user?.fullName != null && user!.fullName!.isNotEmpty) {
+      final names = user.fullName!.split(' ');
+      if (names.length >= 2) {
+        initials = '${names[0][0]}${names[1][0]}';
+      } else {
+        initials = user.fullName!.substring(0, 1);
+      }
+    } else if (user?.firstName != null && user?.lastName != null) {
+      initials = '${user!.firstName![0]}${user.lastName![0]}';
+    }
+
     return Container(
       padding: EdgeInsets.all(AppSpacing.xl),
       child: Column(
@@ -144,16 +194,36 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   color: AppColors.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Center(
-                  child: Text(
-                    '${_profile.firstName[0]}${_profile.lastName[0]}',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
+                child:
+                    user?.profilePhoto != null && user!.profilePhoto!.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          user.profilePhoto!,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                            child: Text(
+                              initials.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          initials.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
               ),
               if (_isEditing)
                 Positioned(
@@ -162,7 +232,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      // Fotoğraf değiştirme işlemi
+                      // TODO: Fotoğraf değiştirme işlemi
                     },
                     child: Container(
                       width: 32,
@@ -172,21 +242,52 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.surface, width: 2),
                       ),
-                      child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                      child: Icon(
+                        Icons.camera_alt,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
             ],
           ),
           SizedBox(height: AppSpacing.md),
-          Text(
-            _profile.fullName,
-            style: AppTypography.h4,
-          ),
-          Text(
-            _profile.email,
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-          ),
+          Text(user?.displayName ?? 'Kullanıcı', style: AppTypography.h4),
+          if (user?.email != null && user!.email!.isNotEmpty)
+            Text(
+              user.email!,
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          if (user?.rank != null) ...[
+            SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.1),
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star, size: 16, color: AppColors.warning),
+                  SizedBox(width: 4),
+                  Text(
+                    '${user!.rank} Puan',
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.warning,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -215,7 +316,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               ),
             ),
             SizedBox(height: AppSpacing.lg),
-            
+
             // Ad
             _buildTextField(
               label: 'Ad',
@@ -224,7 +325,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               enabled: _isEditing,
             ),
             SizedBox(height: AppSpacing.md),
-            
+
             // Soyad
             _buildTextField(
               label: 'Soyad',
@@ -233,7 +334,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               enabled: _isEditing,
             ),
             SizedBox(height: AppSpacing.md),
-            
+
             // E-posta
             _buildTextField(
               label: 'E-posta',
@@ -243,7 +344,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               keyboardType: TextInputType.emailAddress,
             ),
             SizedBox(height: AppSpacing.md),
-            
+
             // Telefon
             _buildTextField(
               label: 'Telefon',
@@ -253,11 +354,11 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               keyboardType: TextInputType.phone,
             ),
             SizedBox(height: AppSpacing.md),
-            
+
             // Cinsiyet
             _buildGenderSelector(),
             SizedBox(height: AppSpacing.md),
-            
+
             // Doğum Tarihi
             _buildBirthDateSelector(),
           ],
@@ -278,7 +379,11 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         SizedBox(height: AppSpacing.xs),
         TextFormField(
@@ -287,9 +392,15 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
           keyboardType: keyboardType,
           style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20, color: enabled ? AppColors.primary : AppColors.textTertiary),
+            prefixIcon: Icon(
+              icon,
+              size: 20,
+              color: enabled ? AppColors.primary : AppColors.textTertiary,
+            ),
             filled: true,
-            fillColor: enabled ? AppColors.background : AppColors.background.withOpacity(0.5),
+            fillColor: enabled
+                ? AppColors.background
+                : AppColors.background.withOpacity(0.5),
             border: OutlineInputBorder(
               borderRadius: AppRadius.borderRadiusSM,
               borderSide: BorderSide(color: AppColors.border),
@@ -306,7 +417,10 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
               borderRadius: AppRadius.borderRadiusSM,
               borderSide: BorderSide(color: AppColors.border.withOpacity(0.5)),
             ),
-            contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
           ),
         ),
       ],
@@ -319,7 +433,11 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       children: [
         Text(
           'Cinsiyet',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         SizedBox(height: AppSpacing.xs),
         Row(
@@ -328,50 +446,54 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
             SizedBox(width: AppSpacing.sm),
             Expanded(child: _buildGenderOption('Kadın', Icons.female)),
             SizedBox(width: AppSpacing.sm),
-            Expanded(child: _buildGenderOption('Belirtmek İstemiyorum', Icons.person_outline, flex: 2)),
+            Expanded(
+              flex: 2,
+              child: _buildGenderOption('Belirtilmemiş', Icons.person_outline),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildGenderOption(String gender, IconData icon, {int flex = 1}) {
+  Widget _buildGenderOption(String gender, IconData icon) {
     final isSelected = _selectedGender == gender;
-    return Expanded(
-      flex: flex,
-      child: GestureDetector(
-        onTap: _isEditing ? () {
-          HapticFeedback.lightImpact();
-          setState(() => _selectedGender = gender);
-        } : null,
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.background,
-            borderRadius: AppRadius.borderRadiusSM,
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border,
-              width: isSelected ? 1.5 : 1,
+    return GestureDetector(
+      onTap: _isEditing
+          ? () {
+              HapticFeedback.lightImpact();
+              setState(() => _selectedGender = gender);
+            }
+          : null,
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.1)
+              : AppColors.background,
+          borderRadius: AppRadius.borderRadiusSM,
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppColors.primary : AppColors.textTertiary,
             ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected ? AppColors.primary : AppColors.textTertiary,
+            SizedBox(height: 4),
+            Text(
+              gender == 'Belirtilmemiş' ? 'Diğer' : gender,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
-              SizedBox(height: 4),
-              Text(
-                gender == 'Belirtmek İstemiyorum' ? 'Diğer' : gender,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -383,24 +505,39 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       children: [
         Text(
           'Doğum Tarihi',
-          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 12,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+          ),
         ),
         SizedBox(height: AppSpacing.xs),
         GestureDetector(
           onTap: _isEditing ? () => _selectBirthDate() : null,
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
             decoration: BoxDecoration(
-              color: _isEditing ? AppColors.background : AppColors.background.withOpacity(0.5),
+              color: _isEditing
+                  ? AppColors.background
+                  : AppColors.background.withOpacity(0.5),
               borderRadius: AppRadius.borderRadiusSM,
-              border: Border.all(color: _isEditing ? AppColors.border : AppColors.border.withOpacity(0.5)),
+              border: Border.all(
+                color: _isEditing
+                    ? AppColors.border
+                    : AppColors.border.withOpacity(0.5),
+              ),
             ),
             child: Row(
               children: [
                 Icon(
                   Icons.calendar_today_outlined,
                   size: 20,
-                  color: _isEditing ? AppColors.primary : AppColors.textTertiary,
+                  color: _isEditing
+                      ? AppColors.primary
+                      : AppColors.textTertiary,
                 ),
                 SizedBox(width: AppSpacing.md),
                 Text(
@@ -409,12 +546,18 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                       : 'Seçiniz',
                   style: TextStyle(
                     fontSize: 14,
-                    color: _selectedBirthDate != null ? AppColors.textPrimary : AppColors.textTertiary,
+                    color: _selectedBirthDate != null
+                        ? AppColors.textPrimary
+                        : AppColors.textTertiary,
                   ),
                 ),
                 Spacer(),
                 if (_isEditing)
-                  Icon(Icons.chevron_right, size: 20, color: AppColors.textTertiary),
+                  Icon(
+                    Icons.chevron_right,
+                    size: 20,
+                    color: AppColors.textTertiary,
+                  ),
               ],
             ),
           ),
@@ -444,26 +587,27 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
         );
       },
     );
-    
+
     if (picked != null) {
       setState(() => _selectedBirthDate = picked);
     }
   }
 
-  void _saveProfile() {
-    if (_formKey.currentState!.validate()) {
-      HapticFeedback.heavyImpact();
-      
-      // Profili güncelle
-      _profile.firstName = _firstNameController.text;
-      _profile.lastName = _lastNameController.text;
-      _profile.email = _emailController.text;
-      _profile.phone = _phoneController.text;
-      _profile.gender = _selectedGender;
-      _profile.birthDate = _selectedBirthDate;
+  Future<void> _saveProfile() async {
+    HapticFeedback.heavyImpact();
 
-      setState(() => _isEditing = false);
+    setState(() {
+      _isLoading = true;
+      _isEditing = false;
+    });
 
+    // TODO: API'ye güncelleme isteği gönder
+    // Şimdilik sadece local güncelleme yapıyoruz
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
