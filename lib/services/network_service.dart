@@ -4,6 +4,9 @@ import 'package:logger/logger.dart';
 
 import '../core/constants/api_constants.dart';
 
+/// 403 hatası callback tipi
+typedef OnUnauthorizedCallback = void Function();
+
 /// Network sonuç wrapper'ı
 /// API çağrılarının sonucunu sarmalayan generic sınıf
 class NetworkResult<T> {
@@ -55,6 +58,9 @@ class NetworkService {
   );
 
   String? _authToken;
+  
+  /// 403 hatası callback - Token geçersiz olduğunda çağrılır
+  OnUnauthorizedCallback? onUnauthorized;
 
   /// Auth token'ı set et
   void setAuthToken(String token) {
@@ -202,6 +208,17 @@ class NetworkService {
         _logger.w('⚠️ 401 Unauthorized: $endpoint');
         return NetworkResult.failure(
           'Yetkilendirme hatası',
+          statusCode: statusCode,
+        );
+      }
+
+      // 403 hatası - Forbidden (Token geçersiz/süresi dolmuş)
+      if (statusCode == 403) {
+        _logger.w('⚠️ 403 Forbidden - Token geçersiz: $endpoint');
+        // Callback'i çağır (login sayfasına yönlendirme için)
+        onUnauthorized?.call();
+        return NetworkResult.failure(
+          'Oturum süreniz doldu. Lütfen tekrar giriş yapın.',
           statusCode: statusCode,
         );
       }

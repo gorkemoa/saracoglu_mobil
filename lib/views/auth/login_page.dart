@@ -12,35 +12,16 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage>
-    with SingleTickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+class _LoginPageState extends State<LoginPage> {
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
-  bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
-  bool _rememberMe = false;
-
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-    _animationController.forward();
 
     // Yönlendirme mesajını göster
     if (widget.redirectMessage != null) {
@@ -62,71 +43,56 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
-    _nameController.dispose();
-    _phoneController.dispose();
-    _confirmPasswordController.dispose();
-    _animationController.dispose();
     super.dispose();
   }
 
-  void _toggleMode() {
-    setState(() {
-      _isLogin = !_isLogin;
-    });
-    _animationController.reset();
-    _animationController.forward();
-  }
+  Future<void> _login() async {
+    // Boş alan kontrolü
+    if (_usernameController.text.trim().isEmpty || 
+        _passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Lütfen tüm alanları doldurun'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.borderRadiusSM,
+          ),
+        ),
+      );
+      return;
+    }
 
-  Future<void> _submit() async {
     setState(() => _isLoading = true);
     HapticFeedback.lightImpact();
 
     final authViewModel = AuthViewModel();
 
-    if (_isLogin) {
-      // Login işlemi
-      final success = await authViewModel.login(
-        userName: _emailController.text.trim(),
-        password: _passwordController.text,
+    final success = await authViewModel.login(
+      userName: _usernameController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    setState(() => _isLoading = false);
+
+    if (success && mounted) {
+      HapticFeedback.heavyImpact();
+      Navigator.pop(context, true);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authViewModel.errorMessage ?? 'Giriş başarısız'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.borderRadiusSM,
+          ),
+        ),
       );
-
-      setState(() => _isLoading = false);
-
-      if (success && mounted) {
-        HapticFeedback.heavyImpact();
-        Navigator.pop(context, true);
-      } else if (mounted) {
-        // API'den gelen hata mesajını göster
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authViewModel.errorMessage ?? 'Giriş başarısız'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(AppSpacing.md),
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.borderRadiusSM,
-            ),
-          ),
-        );
-      }
-    } else {
-      // Register işlemi - TODO: API entegrasyonu yapılacak
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Kayıt işlemi henüz aktif değil'),
-            backgroundColor: AppColors.warning,
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(AppSpacing.md),
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.borderRadiusSM,
-            ),
-          ),
-        );
-      }
     }
   }
 
@@ -134,315 +100,247 @@ class _LoginPageState extends State<LoginPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: Icon(
-            Icons.arrow_back_ios,
-            color: AppColors.textPrimary,
-            size: 20,
-          ),
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(AppSpacing.lg),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Logo
-                  Center(
-                    child: Image.asset(
-                      'assets/logo.png',
-                      height: 60,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 60,
-                          width: 120,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: AppRadius.borderRadiusMD,
-                          ),
-                          child: Center(
-                            child: Text(
-                              'SARAÇOĞLU',
-                              style: AppTypography.h4.copyWith(
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: AppSpacing.xl),
+
+                // Geri butonu
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: AppRadius.borderRadiusSM,
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Icon(
+                      Icons.arrow_back_ios_new,
+                      size: 18,
+                      color: AppColors.textPrimary,
                     ),
                   ),
+                ),
 
-                  SizedBox(height: AppSpacing.xxl),
+                SizedBox(height: AppSpacing.xxl),
 
-                  // Başlık
-                  Text(
-                    _isLogin ? 'Giriş Yap' : 'Kayıt Ol',
-                    style: AppTypography.h2,
-                    textAlign: TextAlign.center,
+                // Hoş geldin metni
+                Text(
+                  'Hoş Geldiniz',
+                  style: AppTypography.h1.copyWith(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w700,
                   ),
+                ),
 
-                  SizedBox(height: AppSpacing.sm),
+                SizedBox(height: AppSpacing.sm),
 
-                  Text(
-                    _isLogin
-                        ? 'Hesabınıza giriş yaparak alışverişe başlayın'
-                        : 'Yeni bir hesap oluşturarak avantajlardan yararlanın',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
+                Text(
+                  'Hesabınıza giriş yaparak alışverişe başlayın',
+                  style: AppTypography.bodyLarge.copyWith(
+                    color: AppColors.textSecondary,
                   ),
+                ),
 
-                  SizedBox(height: AppSpacing.xxl),
+                SizedBox(height: AppSpacing.xxl + AppSpacing.lg),
 
-                  // Ad Soyad (Sadece kayıt için)
-                  if (!_isLogin) ...[
-                    _buildTextField(
-                      controller: _nameController,
-                      label: 'Ad Soyad',
-                      icon: Icons.person_outline,
-                    ),
-                    SizedBox(height: AppSpacing.md),
-                  ],
-
-                  // E-posta
-                  _buildTextField(
-                    controller: _emailController,
-                    label: 'Kullanıcı Adı',
-                    icon: Icons.person_outline,
-                    keyboardType: TextInputType.text,
+                // Kullanıcı adı
+                Text(
+                  'Kullanıcı Adı',
+                  style: AppTypography.labelMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
-
-                  SizedBox(height: AppSpacing.md),
-
-                  // Telefon (Sadece kayıt için)
-                  if (!_isLogin) ...[
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'Telefon',
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
+                ),
+                SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _usernameController,
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                  style: AppTypography.bodyLarge,
+                  decoration: InputDecoration(
+                    hintText: 'Kullanıcı adınızı girin',
+                    hintStyle: AppTypography.bodyLarge.copyWith(
+                      color: AppColors.textTertiary,
                     ),
-                    SizedBox(height: AppSpacing.md),
-                  ],
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md + 4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                  ),
+                ),
 
-                  // Şifre
-                  _buildTextField(
-                    controller: _passwordController,
-                    label: 'Şifre',
-                    icon: Icons.lock_outline,
-                    obscureText: _obscurePassword,
+                SizedBox(height: AppSpacing.lg),
+
+                // Şifre
+                Text(
+                  'Şifre',
+                  style: AppTypography.labelMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _login(),
+                  style: AppTypography.bodyLarge,
+                  decoration: InputDecoration(
+                    hintText: '••••••••',
+                    hintStyle: AppTypography.bodyLarge.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md + 4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                    ),
                     suffixIcon: IconButton(
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
+                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
                         color: AppColors.textSecondary,
+                        size: 22,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
+                ),
 
-                  // Şifre Tekrar (Sadece kayıt için)
-                  if (!_isLogin) ...[
-                    SizedBox(height: AppSpacing.md),
-                    _buildTextField(
-                      controller: _confirmPasswordController,
-                      label: 'Şifre Tekrar',
-                      icon: Icons.lock_outline,
-                      obscureText: _obscureConfirmPassword,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          color: AppColors.textSecondary,
-                        ),
-                        onPressed: () => setState(
-                          () => _obscureConfirmPassword =
-                              !_obscureConfirmPassword,
-                        ),
+                SizedBox(height: AppSpacing.md),
+
+                // Şifremi unuttum
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _showForgotPasswordSheet,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'Şifremi Unuttum',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
+                  ),
+                ),
 
-                  SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.xxl),
 
-                  // Beni Hatırla & Şifremi Unuttum (Sadece giriş için)
-                  if (_isLogin) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                onChanged: (value) => setState(
-                                  () => _rememberMe = value ?? false,
-                                ),
-                                activeColor: AppColors.primary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
+                // Giriş Yap Butonu
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                      ),
+                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                    ),
+                    child: _isLoading
+                        ? SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
-                            SizedBox(width: AppSpacing.xs),
-                            Text(
-                              'Beni Hatırla',
-                              style: AppTypography.bodySmall,
-                            ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: _showForgotPasswordDialog,
-                          child: Text(
-                            'Şifremi Unuttum',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
+                          )
+                        : Text(
+                            'Giriş Yap',
+                            style: AppTypography.buttonLarge.copyWith(
+                              color: Colors.white,
+                              fontSize: 16,
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: AppSpacing.lg),
-                  ],
-
-                  SizedBox(height: AppSpacing.md),
-
-                  // Giriş/Kayıt Butonu
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppRadius.borderRadiusMD,
-                        ),
-                        elevation: 0,
-                      ),
-                      child: _isLoading
-                          ? SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
-                                ),
-                              ),
-                            )
-                          : Text(
-                              _isLogin ? 'Giriş Yap' : 'Kayıt Ol',
-                              style: AppTypography.buttonLarge.copyWith(
-                                color: Colors.white,
-                              ),
-                            ),
-                    ),
                   ),
+                ),
 
-                  SizedBox(height: AppSpacing.xl),
+                SizedBox(height: AppSpacing.xxl),
 
-                  // Ayırıcı
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: AppColors.border)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                        ),
-                        child: Text(
-                          'veya',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: AppColors.border)),
-                    ],
-                  ),
-
-                  SizedBox(height: AppSpacing.xl),
-
-                  // Sosyal Giriş Butonları
-                  _buildSocialButton(
-                    icon: Icons.g_mobiledata,
-                    label: 'Google ile devam et',
-                    onPressed: () {
-                      // TODO: Google Sign In
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Google ile giriş yakında aktif olacak',
-                          ),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
-
-                  SizedBox(height: AppSpacing.md),
-
-                  _buildSocialButton(
-                    icon: Icons.apple,
-                    label: 'Apple ile devam et',
-                    onPressed: () {
-                      // TODO: Apple Sign In
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Apple ile giriş yakında aktif olacak'),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
-
-                  SizedBox(height: AppSpacing.xxl),
-
-                  // Mod değiştirme
-                  Row(
+                // Kayıt ol linki
+                Center(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        _isLogin
-                            ? 'Hesabınız yok mu?'
-                            : 'Zaten hesabınız var mı?',
+                        'Hesabınız yok mu? ',
                         style: AppTypography.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),
-                      TextButton(
-                        onPressed: _toggleMode,
+                      GestureDetector(
+                        onTap: () {
+                          // TODO: Kayıt sayfasına git
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Kayıt özelliği yakında aktif olacak'),
+                              backgroundColor: AppColors.info,
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.all(AppSpacing.md),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.borderRadiusSM,
+                              ),
+                            ),
+                          );
+                        },
                         child: Text(
-                          _isLogin ? 'Kayıt Ol' : 'Giriş Yap',
+                          'Kayıt Ol',
                           style: AppTypography.bodyMedium.copyWith(
                             color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+
+                SizedBox(height: AppSpacing.xxl),
+              ],
             ),
           ),
         ),
@@ -450,149 +348,137 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType? keyboardType,
-    bool obscureText = false,
-    Widget? suffixIcon,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: AppTypography.bodyMedium,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: AppTypography.bodyMedium.copyWith(
-          color: AppColors.textSecondary,
-        ),
-        prefixIcon: Icon(icon, color: AppColors.textSecondary, size: 22),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: AppRadius.borderRadiusMD,
-          borderSide: BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadius.borderRadiusMD,
-          borderSide: BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: AppRadius.borderRadiusMD,
-          borderSide: BorderSide(color: AppColors.primary, width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: AppRadius.borderRadiusMD,
-          borderSide: BorderSide(color: AppColors.error),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: AppRadius.borderRadiusMD,
-          borderSide: BorderSide(color: AppColors.error, width: 2),
-        ),
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      height: 52,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
-          side: BorderSide(color: AppColors.border),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 24),
-            SizedBox(width: AppSpacing.sm),
-            Text(label, style: AppTypography.buttonMedium),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showForgotPasswordDialog() {
+  void _showForgotPasswordSheet() {
     final emailController = TextEditingController();
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
-        title: Text('Şifre Sıfırlama', style: AppTypography.h4),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'E-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
-            ),
-            SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                labelText: 'E-posta',
-                border: OutlineInputBorder(
-                  borderRadius: AppRadius.borderRadiusSM,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'İptal',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: Container(
+          padding: EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              if (emailController.text.isNotEmpty) {
-                Navigator.pop(context);
-               
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        
-                             'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi'
-                             'Bir hata oluştu',
-                      ),
-                      backgroundColor: 
-                       AppColors.success,
-                      behavior: SnackBarBehavior.floating,
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: AppRadius.borderRadiusRound,
                     ),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xl),
+
+                Text(
+                  'Şifre Sıfırlama',
+                  style: AppTypography.h3,
+                ),
+                SizedBox(height: AppSpacing.sm),
+                Text(
+                  'E-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+
+                SizedBox(height: AppSpacing.xl),
+
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: AppTypography.bodyLarge,
+                  decoration: InputDecoration(
+                    hintText: 'E-posta adresiniz',
+                    hintStyle: AppTypography.bodyLarge.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.md + 4,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: AppSpacing.xl),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (emailController.text.isNotEmpty) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Şifre sıfırlama bağlantısı gönderildi'),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                            margin: EdgeInsets.all(AppSpacing.md),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadius.borderRadiusSM,
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                      ),
+                    ),
+                    child: Text(
+                      'Gönder',
+                      style: AppTypography.buttonMedium.copyWith(color: Colors.white),
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: AppSpacing.md),
+
+                Center(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Vazgeç',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Text('Gönder'),
           ),
-        ],
+        ),
       ),
     );
   }
