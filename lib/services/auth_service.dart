@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/constants/api_constants.dart';
 import '../core/constants/app_constants.dart';
@@ -10,28 +11,110 @@ import '../models/user/delete_user_model.dart';
 import 'network_service.dart';
 import '../views/auth/login_page.dart';
 
+/// SharedPreferences keys
+class _StorageKeys {
+  static const String userId = 'user_id';
+  static const String userToken = 'user_token';
+}
+
 /// Kimlik doğrulama servisi - Singleton pattern
 /// Kullanıcı oturum durumunu yönetir
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
-  AuthService._internal();
+  AuthService._internal() {
+    _setupUnauthorizedCallback();
+  }
 
   final NetworkService _networkService = NetworkService();
 
   // Kullanıcı bilgileri
   UserModel? _currentUser;
   bool _isLoading = false;
+  bool _isInitialized = false;
+  
+  // 403 hatası için global context (Navigator için)
+  static GlobalKey<NavigatorState>? navigatorKey;
 
   // Getters
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
   UserModel? get currentUser => _currentUser;
   String? get userId => _currentUser?.id.toString();
   String? get userName => _currentUser?.userName;
   String? get userEmail => _currentUser?.email;
   String? get userPhone => _currentUser?.phone;
   String? get token => _currentUser?.token;
+
+  /// 403 callback'i ayarla
+  void _setupUnauthorizedCallback() {
+    _networkService.onUnauthorized = () {
+      _handleUnauthorized();
+    };
+  }
+
+  /// 403 hatası geldiğinde çağrılır
+  void _handleUnauthorized() async {
+    // Kullanıcı bilgilerini temizle
+    await _clearStoredCredentials();
+    _currentUser = null;
+    _networkService.clearAuthToken();
+    notifyListeners();
+
+    // Login sayfasına yönlendir
+    if (navigatorKey?.currentContext != null) {
+      final context = navigatorKey!.currentContext!;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const LoginPage(
+            redirectMessage: 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.',
+          ),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
+  /// Uygulama başlangıcında kaydedilmiş oturumu kontrol et
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final storedUserId = prefs.getInt(_StorageKeys.userId);
+    final storedToken = prefs.getString(_StorageKeys.userToken);
+
+    if (storedUserId != null && storedToken != null) {
+      // Token'ı network service'e set et
+      _networkService.setAuthToken(storedToken);
+
+      // Geçici kullanıcı modeli oluştur
+      _currentUser = UserModel(
+        id: storedUserId,
+        token: storedToken,
+      );
+
+      // Kullanıcı bilgilerini API'den getir (arka planda)
+      getUser(storedUserId);
+    }
+
+    _isInitialized = true;
+    notifyListeners();
+  }
+
+  /// Kullanıcı bilgilerini SharedPreferences'a kaydet
+  Future<void> _saveCredentials(int userId, String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_StorageKeys.userId, userId);
+    await prefs.setString(_StorageKeys.userToken, token);
+  }
+
+  /// Kaydedilmiş kullanıcı bilgilerini temizle
+  Future<void> _clearStoredCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_StorageKeys.userId);
+    await prefs.remove(_StorageKeys.userToken);
+  }
 
   /// Kullanıcı girişi yap
   Future<LoginResponse> login(LoginRequest request) async {
@@ -58,6 +141,9 @@ class AuthService extends ChangeNotifier {
             id: response.data!.userID,
             token: response.data!.token,
           );
+
+          // Credentials'ı kaydet (kalıcı oturum)
+          await _saveCredentials(response.data!.userID, response.data!.token);
 
           notifyListeners();
         }
@@ -95,6 +181,7 @@ class AuthService extends ChangeNotifier {
 
   /// Çıkış yap
   Future<void> logout() async {
+    await _clearStoredCredentials();
     _currentUser = null;
     _networkService.clearAuthToken();
     notifyListeners();
