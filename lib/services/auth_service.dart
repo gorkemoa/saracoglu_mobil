@@ -4,6 +4,9 @@ import '../core/constants/api_constants.dart';
 import '../core/constants/app_constants.dart';
 import '../models/auth/login_model.dart';
 import '../models/user/user_model.dart';
+import '../models/user/update_user_model.dart';
+import '../models/user/update_password_model.dart';
+import '../models/user/delete_user_model.dart';
 import 'network_service.dart';
 import '../views/auth/login_page.dart';
 
@@ -151,10 +154,122 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Kullanıcı bilgilerini güncelle
-  void updateUser(UserModel user) {
+  /// Kullanıcı bilgilerini güncelle (updateUser - PUT)
+  /// userId: Kullanıcı ID'si
+  /// request: Güncellenecek bilgiler
+  Future<UpdateUserResponse> updateUserInfo(int userId, UpdateUserRequest request) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      // Endpoint: service/user/update/{userId}/account
+      final result = await _networkService.put(
+        '${ApiConstants.updateUser}/$userId/account',
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = UpdateUserResponse.fromJson(result.data!);
+
+        if (response.isSuccess) {
+          // Başarılı güncelleme sonrası güncel bilgileri getir
+          await getUser(userId);
+        }
+
+        notifyListeners();
+        return response;
+      } else {
+        notifyListeners();
+        return UpdateUserResponse(
+          error: true,
+          success: false,
+          message: result.errorMessage,
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return UpdateUserResponse(
+        error: true,
+        success: false,
+        message: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Kullanıcı bilgilerini local olarak güncelle
+  void setCurrentUser(UserModel user) {
     _currentUser = user;
     notifyListeners();
+  }
+
+  /// Şifre güncelle
+  Future<UpdatePasswordResponse> updatePassword(UpdatePasswordRequest request) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await _networkService.put(
+        ApiConstants.updatePassword,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess && result.data != null) {
+        return UpdatePasswordResponse.fromJson(result.data!);
+      } else {
+        return UpdatePasswordResponse.error(result.errorMessage ?? 'Şifre güncellenirken bir hata oluştu');
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return UpdatePasswordResponse.error(e.toString());
+    }
+  }
+
+  /// Hesabı sil
+  Future<DeleteUserResponse> deleteUser() async {
+    try {
+      if (_currentUser == null) {
+        return DeleteUserResponse.error('Kullanıcı bilgisi bulunamadı');
+      }
+
+      _isLoading = true;
+      notifyListeners();
+
+      final request = DeleteUserRequest(userToken: _currentUser!.token);
+
+      final result = await _networkService.delete(
+        ApiConstants.deleteUser,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = DeleteUserResponse.fromJson(result.data!);
+
+        if (response.isSuccess) {
+          // Hesap silindi, çıkış yap
+          await logout();
+        }
+
+        notifyListeners();
+        return response;
+      } else {
+        notifyListeners();
+        return DeleteUserResponse.error(result.errorMessage ?? 'Hesap silinirken bir hata oluştu');
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return DeleteUserResponse.error(e.toString());
+    }
   }
 }
 

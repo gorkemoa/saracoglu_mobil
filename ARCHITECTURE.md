@@ -93,5 +93,32 @@ Response (Success):
 3. ✅ API çağrıları services/ içinde
 4. ✅ State yönetimi viewmodels/ içinde
 5. ✅ 417 hatası = Backend mesajını göster
-6. ❌ Statik hata mesajı yazma
-7. ❌ Validator kullanma (backend validation)
+6. ✅ Profil sayfalarına her girişte kullanıcı bilgilerini yenile (getUser)
+7. ❌ Statik hata mesajı yazma
+8. ❌ Validator kullanma (backend validation)
+
+## 📱 Sayfa Davranışları
+
+### Profil Sayfaları
+- **ProfilePage**: Her açılışta `getUser` API çağrısı yapılır
+- **ProfileInfoPage**: Her açılışta `getUser` API çağrısı yapılır
+- Kullanıcı bilgileri güncellenmiş olabilir, her zaman en güncel veriyi göster
+- Loading state ile kullanıcıya yüklenme durumu gösterilir
+
+```dart
+// ✅ DOĞRU - Her girişte yenile
+@override
+void initState() {
+  super.initState();
+  _refreshUserData(); // Her zaman güncel veri
+}
+
+// ❌ YANLIŞ - Sadece bir kez çek
+@override
+void initState() {
+  super.initState();
+  if (_user == null) {
+    _fetchUser(); // Sadece null ise çek
+  }
+}
+```

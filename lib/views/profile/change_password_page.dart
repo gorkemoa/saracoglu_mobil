@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
+import '../../services/auth_service.dart';
+import '../../models/user/update_password_model.dart';
 
 class ChangePasswordPage extends StatefulWidget {
   const ChangePasswordPage({super.key});
@@ -14,6 +16,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final AuthService _authService = AuthService();
 
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
@@ -72,12 +75,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       onToggle: () {
                         setState(() => _obscureCurrentPassword = !_obscureCurrentPassword);
                       },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Mevcut şifrenizi giriniz';
-                        }
-                        return null;
-                      },
                     ),
                     SizedBox(height: AppSpacing.lg),
 
@@ -88,21 +85,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       obscureText: _obscureNewPassword,
                       onToggle: () {
                         setState(() => _obscureNewPassword = !_obscureNewPassword);
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Yeni şifrenizi giriniz';
-                        }
-                        if (value.length < 8) {
-                          return 'Şifre en az 8 karakter olmalıdır';
-                        }
-                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                          return 'En az bir büyük harf içermelidir';
-                        }
-                        if (!RegExp(r'[0-9]').hasMatch(value)) {
-                          return 'En az bir rakam içermelidir';
-                        }
-                        return null;
                       },
                     ),
                     SizedBox(height: AppSpacing.sm),
@@ -116,15 +98,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                       obscureText: _obscureConfirmPassword,
                       onToggle: () {
                         setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Şifrenizi tekrar giriniz';
-                        }
-                        if (value != _newPasswordController.text) {
-                          return 'Şifreler eşleşmiyor';
-                        }
-                        return null;
                       },
                     ),
                     SizedBox(height: AppSpacing.xl),
@@ -227,7 +200,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     required String label,
     required bool obscureText,
     required VoidCallback onToggle,
-    required String? Function(String?) validator,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +216,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
-          validator: validator,
           onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             hintText: '••••••••',
@@ -395,18 +366,55 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   }
 
   void _changePassword() async {
-    if (!_formKey.currentState!.validate()) return;
-
     HapticFeedback.lightImpact();
     setState(() => _isLoading = true);
 
-    // Simüle edilmiş API çağrısı
-    await Future.delayed(Duration(seconds: 2));
+    try {
+      final user = _authService.currentUser;
+      if (user == null) {
+        throw Exception('Kullanıcı bilgisi bulunamadı');
+      }
 
-    setState(() => _isLoading = false);
+      final request = UpdatePasswordRequest(
+        userToken: user.token,
+        currentPassword: _currentPasswordController.text,
+        password: _newPasswordController.text,
+        passwordAgain: _confirmPasswordController.text,
+      );
 
-    if (mounted) {
-      _showSuccessSheet();
+      final response = await _authService.updatePassword(request);
+
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        if (response.isSuccess) {
+          _showSuccessSheet();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Şifre güncellenemedi'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+          ),
+        );
+      }
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../models/user/user_model.dart';
+import '../../models/user/update_user_model.dart';
 
 class ProfileInfoPage extends StatefulWidget {
   const ProfileInfoPage({super.key});
@@ -30,6 +31,22 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
     super.initState();
     _initControllers();
     _authService.addListener(_onUserChanged);
+    // Her girişte güncel kullanıcı bilgilerini getir
+    _refreshUserData();
+  }
+
+  /// Kullanıcı bilgilerini API'den yenile
+  Future<void> _refreshUserData() async {
+    final userId = _authService.currentUser?.id;
+    if (userId == null) return;
+    
+    setState(() => _isLoading = true);
+    await _authService.getUser(userId);
+    
+    if (mounted) {
+      _updateControllersFromUser();
+      setState(() => _isLoading = false);
+    }
   }
 
   void _initControllers() {
@@ -446,10 +463,7 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
             SizedBox(width: AppSpacing.sm),
             Expanded(child: _buildGenderOption('Kadın', Icons.female)),
             SizedBox(width: AppSpacing.sm),
-            Expanded(
-              flex: 2,
-              child: _buildGenderOption('Belirtilmemiş', Icons.person_outline),
-            ),
+            Expanded(child: _buildGenderOption('Belirtilmemiş', Icons.person_outline)),
           ],
         ),
       ],
@@ -601,28 +615,79 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
       _isEditing = false;
     });
 
-    // TODO: API'ye güncelleme isteği gönder
-    // Şimdilik sadece local güncelleme yapıyoruz
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final user = _authService.currentUser;
+      if (user == null) {
+        throw Exception('Kullanıcı bilgisi bulunamadı');
+      }
 
-    setState(() => _isLoading = false);
+      // Cinsiyet koduna dönüştür
+      int? genderCode;
+      if (_selectedGender == 'Erkek') {
+        genderCode = 1;
+      } else if (_selectedGender == 'Kadın') {
+        genderCode = 2;
+      } else if (_selectedGender == 'Belirtilmemiş') {
+        genderCode = 3;
+      }
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white, size: 18),
-              SizedBox(width: AppSpacing.sm),
-              Text('Profil bilgileriniz güncellendi'),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-        ),
+      final request = UpdateUserRequest(
+        userToken: user.token,
+        userFirstname: _firstNameController.text,
+        userLastname: _lastNameController.text,
+        userEmail: _emailController.text,
+        userPhone: _phoneController.text,
+        userBirthday: _selectedBirthDate != null ? _formatDate(_selectedBirthDate!) : null,
+        userGender: genderCode,
       );
+
+      final response = await _authService.updateUserInfo(user.id, request);
+
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        if (response.isSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  SizedBox(width: AppSpacing.sm),
+                  Text('Profil bilgileriniz güncellendi'),
+                ],
+              ),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Güncelleme başarısız'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+          ),
+        );
+      }
     }
   }
 

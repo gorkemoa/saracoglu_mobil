@@ -23,14 +23,15 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   bool _isLoadingUser = false;
-  bool _hasFetchedUser = false; // Tekrar fetch yapılmasını önlemek için
 
   @override
   void initState() {
     super.initState();
     _authService.addListener(_onAuthChanged);
-    // Eğer kullanıcı giriş yapmışsa ve detaylı bilgiler yoksa getUser çağır
-    _fetchUserIfNeeded();
+    // Eğer kullanıcı giriş yapmışsa bilgileri getir
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchUserIfNeeded();
+    });
   }
 
   @override
@@ -41,18 +42,20 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _onAuthChanged() {
     if (mounted) {
-      setState(() {});
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {});
+        }
+      });
     }
   }
 
-  /// Kullanıcı bilgilerini getir (eğer gerekiyorsa)
+  /// Kullanıcı bilgilerini getir (her zaman güncel bilgi için)
   Future<void> _fetchUserIfNeeded() async {
-    // Zaten fetch yapıldıysa veya yükleme devam ediyorsa çık
-    if (_hasFetchedUser || _isLoadingUser) return;
+    // Yükleme devam ediyorsa çık
+    if (_isLoadingUser) return;
     
-    if (_authService.isLoggedIn &&
-        _authService.currentUser != null &&
-        _authService.currentUser?.fullName == null) {
+    if (_authService.isLoggedIn && _authService.currentUser != null) {
       await _fetchUser();
     }
   }
@@ -63,7 +66,6 @@ class _ProfilePageState extends State<ProfilePage> {
     if (userId == null || _isLoadingUser) return;
 
     setState(() => _isLoadingUser = true);
-    _hasFetchedUser = true; // Fetch yapıldı olarak işaretle
 
     await _authService.getUser(userId);
 
@@ -78,7 +80,6 @@ class _ProfilePageState extends State<ProfilePage> {
       MaterialPageRoute(builder: (_) => const LoginPage()),
     );
     if (result == true && mounted) {
-      _hasFetchedUser = false; // Yeni login, fetch izni ver
       setState(() {});
       // Login başarılı, user bilgilerini getir
       _fetchUser();
@@ -129,6 +130,75 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            SizedBox(width: AppSpacing.sm),
+            Text('Hesabı Sil', style: AppTypography.h4),
+          ],
+        ),
+        content: Text(
+          'Hesabınızı silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz ve tüm verileriniz kalıcı olarak silinecektir.',
+          style: AppTypography.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'İptal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hesabı Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final response = await _authService.deleteUser();
+      
+      if (mounted) {
+        if (response.isSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Hesabınız başarıyla silindi'),
+              backgroundColor: AppColors.success,
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message ?? 'Hesap silinemedi'),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(AppSpacing.md),
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
+            ),
+          );
+        }
       }
     }
   }
@@ -281,6 +351,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     MaterialPageRoute(builder: (_) => const AboutPage()),
                   ),
                 ),
+                if (_authService.isLoggedIn)
+                  _MenuItem(
+                    icon: Icons.delete_forever_outlined,
+                    title: 'Hesabı Sil',
+                    onTap: _deleteAccount,
+                  ),
               ],
             ),
             SizedBox(height: AppSpacing.md),

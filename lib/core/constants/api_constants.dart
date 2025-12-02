@@ -26,6 +26,12 @@ class ApiConstants {
   /// User Endpoints
   /// getUser endpoint - kullanımı: '${ApiConstants.getUser}/$userId'
   static const String getUser = 'service/user/id';
+  /// updateUser endpoint - kullanımı: '${ApiConstants.updateUser}/$userId/account'
+  static const String updateUser = 'service/user/update';
+  /// updatePassword endpoint
+  static const String updatePassword = 'service/user/update/password';
+  /// deleteUser endpoint
+  static const String deleteUser = 'service/user/account/delete';
 
 
 

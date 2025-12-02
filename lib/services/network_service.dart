@@ -158,14 +158,23 @@ class NetworkService {
   }
 
   /// DELETE isteği
-  Future<NetworkResult<Map<String, dynamic>>> delete(String endpoint) async {
+  Future<NetworkResult<Map<String, dynamic>>> delete(
+    String endpoint, {
+    Map<String, dynamic>? body,
+  }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
     
     _logger.d('📤 DELETE Request: $url');
+    if (body != null) {
+      _logger.d('📦 Body: ${jsonEncode(body)}');
+    }
     
     try {
-      final response = await http
-          .delete(url, headers: _headers);
+      final response = await http.delete(
+        url,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      );
 
       _logger.d('📥 DELETE Response [${response.statusCode}]: $endpoint');
       
