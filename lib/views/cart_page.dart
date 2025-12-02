@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../models/delivery_address.dart';
 import '../widgets/add_address_sheet.dart';
+import '../services/auth_service.dart';
+import 'auth/login_page.dart';
 
 class CartItem {
   final String id;
@@ -499,10 +501,117 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final authService = AuthService();
+    
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: _cartItems.isEmpty ? _buildEmptyState() : _buildCartContent(),
-      bottomNavigationBar: _cartItems.isNotEmpty ? _buildCheckoutBar() : null,
+      body: !authService.isLoggedIn 
+        ? _buildLoginRequiredState() 
+        : (_cartItems.isEmpty ? _buildEmptyState() : _buildCartContent()),
+      bottomNavigationBar: (authService.isLoggedIn && _cartItems.isNotEmpty) ? _buildCheckoutBar() : null,
+    );
+  }
+
+  Widget _buildLoginRequiredState() {
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(AppSpacing.xxl),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.elasticOut,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: value,
+                    child: child,
+                  );
+                },
+                child: Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withOpacity(0.1),
+                        AppColors.success.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.shopping_cart_outlined,
+                    size: 56,
+                    color: AppColors.primary.withOpacity(0.7),
+                  ),
+                ),
+              ),
+              SizedBox(height: AppSpacing.xl),
+              Text(
+                'Sepetinizi Görüntüleyin',
+                style: AppTypography.h3,
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: AppSpacing.md),
+              Text(
+                'Alışverişe başlamak ve sepetinizi görüntülemek için giriş yapın.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: AppSpacing.xxl),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                    ).then((_) {
+                      setState(() {}); // Sayfayı yenile
+                    });
+                  },
+                  icon: Icon(Icons.login_rounded),
+                  label: Text('Giriş Yap'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppRadius.borderRadiusMD,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: AppSpacing.md),
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LoginPage(),
+                    ),
+                  ).then((_) {
+                    setState(() {});
+                  });
+                },
+                child: Text(
+                  'Hesabınız yok mu? Kayıt olun',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

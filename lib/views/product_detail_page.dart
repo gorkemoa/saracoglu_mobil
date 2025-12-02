@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
+import '../services/auth_service.dart';
 
 /// Ürün detay sayfası için veri modeli
 class ProductDetailData {
@@ -198,7 +199,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               color: _isFavorite ? AppColors.error : AppColors.textPrimary,
               size: 18,
             ),
-            onPressed: () => setState(() => _isFavorite = !_isFavorite),
+            onPressed: () => _toggleFavorite(),
           ),
         ),
         Container(
@@ -783,7 +784,48 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
-  void _addToCart() {
+  Future<void> _toggleFavorite() async {
+    // Login kontrolü yap
+    if (!await AuthGuard.checkAuth(context, message: 'Favorilere eklemek için giriş yapın')) {
+      return;
+    }
+    
+    HapticFeedback.lightImpact();
+    setState(() => _isFavorite = !_isFavorite);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(
+              child: Text(
+                _isFavorite 
+                  ? '${product.title} favorilere eklendi'
+                  : '${product.title} favorilerden çıkarıldı',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: _isFavorite ? AppColors.error : AppColors.textPrimary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+      ),
+    );
+  }
+
+  Future<void> _addToCart() async {
+    // Login kontrolü yap
+    if (!await AuthGuard.checkAuth(context, message: 'Sepete eklemek için giriş yapın')) {
+      return;
+    }
+    
+    HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

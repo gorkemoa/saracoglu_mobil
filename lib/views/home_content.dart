@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
+import '../services/auth_service.dart';
 import 'product_detail_page.dart'; 
 
 class HomeContent extends StatefulWidget {
@@ -69,6 +71,56 @@ class _HomeContentState extends State<HomeContent> {
         builder: (context) => ProductDetailPage(
         
         ),  
+      ),
+    );
+  }
+
+  Future<void> _handleAddToCart(BuildContext context, String productName) async {
+    if (!await AuthGuard.checkAuth(context, message: 'Sepete eklemek için giriş yapın')) {
+      return;
+    }
+    
+    HapticFeedback.mediumImpact();
+    if (!context.mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('$productName sepete eklendi')),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+      ),
+    );
+  }
+
+  Future<void> _handleFavorite(BuildContext context, String productName) async {
+    if (!await AuthGuard.checkAuth(context, message: 'Favorilere eklemek için giriş yapın')) {
+      return;
+    }
+    
+    HapticFeedback.lightImpact();
+    if (!context.mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.favorite, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('$productName favorilere eklendi')),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
       ),
     );
   }
@@ -559,8 +611,8 @@ class _HomeContentState extends State<HomeContent> {
                 badgeText: "KAMPANYA",
                 badgeColor: const Color(0xFF7B2CBF),
                 onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onAddToCart: () => _handleAddToCart(context, "Pro-Allium Soğan Sebze Suyu"),
+                onFavorite: () => _handleFavorite(context, "Pro-Allium Soğan Sebze Suyu"),
               ),
               ProductCard(
                 title: "Ihlamur Çayı Doğal",
@@ -573,8 +625,8 @@ class _HomeContentState extends State<HomeContent> {
                 badgeText: "KAMPANYA",
                 badgeColor: const Color(0xFF7B2CBF),
                 onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onAddToCart: () => _handleAddToCart(context, "Ihlamur Çayı Doğal"),
+                onFavorite: () => _handleFavorite(context, "Ihlamur Çayı Doğal"),
               ),
               ProductCard(
                 title: "Lavanta Yağı Saf",
@@ -585,8 +637,8 @@ class _HomeContentState extends State<HomeContent> {
                 rating: 4.8,
                 reviewCount: 95,
                 onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onAddToCart: () => _handleAddToCart(context, "Lavanta Yağı Saf"),
+                onFavorite: () => _handleFavorite(context, "Lavanta Yağı Saf"),
               ),
               ProductCard(
                 title: "Ham Bal Organik",
@@ -596,8 +648,8 @@ class _HomeContentState extends State<HomeContent> {
                 rating: 4.9,
                 reviewCount: 312,
                 onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onAddToCart: () => _handleAddToCart(context, "Ham Bal Organik"),
+                onFavorite: () => _handleFavorite(context, "Ham Bal Organik"),
               ),
             ],
           ),
@@ -664,8 +716,9 @@ class _HomeContentState extends State<HomeContent> {
                 reviewCount: 128,
                 badgeText: "YENİ",
                 badgeColor: const Color(0xFF4CAF50),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onTap: () => _navigateToProductDetail(context),
+                onAddToCart: () => _handleAddToCart(context, "Organik Zeytinyağı Natürel Sızma"),
+                onFavorite: () => _handleFavorite(context, "Organik Zeytinyağı Natürel Sızma"),
               ),
               ProductCard(
                 title: "Kekik Suyu Saf",
@@ -676,8 +729,9 @@ class _HomeContentState extends State<HomeContent> {
                 reviewCount: 76,
                 badgeText: "YENİ",
                 badgeColor: const Color(0xFF4CAF50),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onTap: () => _navigateToProductDetail(context),
+                onAddToCart: () => _handleAddToCart(context, "Kekik Suyu Saf"),
+                onFavorite: () => _handleFavorite(context, "Kekik Suyu Saf"),
               ),
               ProductCard(
                 title: "Arı Poleni Doğal",
@@ -688,8 +742,9 @@ class _HomeContentState extends State<HomeContent> {
                 reviewCount: 203,
                 badgeText: "YENİ",
                 badgeColor: const Color(0xFF4CAF50),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onTap: () => _navigateToProductDetail(context),
+                onAddToCart: () => _handleAddToCart(context, "Arı Poleni Doğal"),
+                onFavorite: () => _handleFavorite(context, "Arı Poleni Doğal"),
               ),
               ProductCard(
                 title: "Defne Yağı Organik",
@@ -700,8 +755,9 @@ class _HomeContentState extends State<HomeContent> {
                 reviewCount: 89,
                 badgeText: "YENİ",
                 badgeColor: const Color(0xFF4CAF50),
-                onAddToCart: () {},
-                onFavorite: () {},
+                onTap: () => _navigateToProductDetail(context),
+                onAddToCart: () => _handleAddToCart(context, "Defne Yağı Organik"),
+                onFavorite: () => _handleFavorite(context, "Defne Yağı Organik"),
               ),
             ],
           ),

@@ -1,8 +1,155 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
+import 'auth/login_page.dart';
+import 'profile/orders_page.dart';
+import 'profile/cargo_tracking_page.dart';
+import 'profile/returns_page.dart';
+import 'profile/profile_info_page.dart';
+import 'profile/addresses_page.dart';
+import 'profile/saved_cards_page.dart';
+import 'profile/change_password_page.dart';
+import 'profile/help_support_page.dart';
+import 'profile/legal_info_page.dart';
+import 'profile/about_page.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final AuthService _authService = AuthService();
+  bool _isLoadingUser = false;
+  bool _hasFetchedUser = false; // Tekrar fetch yapılmasını önlemek için
+
+  @override
+  void initState() {
+    super.initState();
+    _authService.addListener(_onAuthChanged);
+    // Eğer kullanıcı giriş yapmışsa ve detaylı bilgiler yoksa getUser çağır
+    _fetchUserIfNeeded();
+  }
+
+  @override
+  void dispose() {
+    _authService.removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  /// Kullanıcı bilgilerini getir (eğer gerekiyorsa)
+  Future<void> _fetchUserIfNeeded() async {
+    // Zaten fetch yapıldıysa veya yükleme devam ediyorsa çık
+    if (_hasFetchedUser || _isLoadingUser) return;
+    
+    if (_authService.isLoggedIn &&
+        _authService.currentUser != null &&
+        _authService.currentUser?.fullName == null) {
+      await _fetchUser();
+    }
+  }
+
+  /// Kullanıcı bilgilerini API'den getir
+  Future<void> _fetchUser() async {
+    final userId = _authService.currentUser?.id;
+    if (userId == null || _isLoadingUser) return;
+
+    setState(() => _isLoadingUser = true);
+    _hasFetchedUser = true; // Fetch yapıldı olarak işaretle
+
+    await _authService.getUser(userId);
+
+    if (mounted) {
+      setState(() => _isLoadingUser = false);
+    }
+  }
+
+  Future<void> _navigateToLogin() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+    if (result == true && mounted) {
+      _hasFetchedUser = false; // Yeni login, fetch izni ver
+      setState(() {});
+      // Login başarılı, user bilgilerini getir
+      _fetchUser();
+    }
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
+        title: Text('Çıkış Yap', style: AppTypography.h4),
+        content: Text(
+          'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+          style: AppTypography.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'İptal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Çıkış Yap'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _authService.logout();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Başarıyla çıkış yapıldı'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _navigateWithAuthCheck(
+    BuildContext context,
+    Widget page,
+    String message,
+  ) async {
+    if (!_authService.isLoggedIn) {
+      final result = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => LoginPage(redirectMessage: message)),
+      );
+      if (result != true || !mounted) return;
+    }
+
+    if (mounted) {
+      Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +176,7 @@ class ProfilePage extends StatelessWidget {
         child: Column(
           children: [
             // Kullanıcı bilgileri
-            _buildUserHeader(),
+            _buildUserHeader(context),
             SizedBox(height: AppSpacing.md),
             // Menü öğeleri
             _buildMenuSection(
@@ -38,17 +185,29 @@ class ProfilePage extends StatelessWidget {
                 _MenuItem(
                   icon: Icons.shopping_bag_outlined,
                   title: 'Siparişlerim',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const OrdersPage(),
+                    'Siparişlerinizi görmek için giriş yapın',
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.local_shipping_outlined,
                   title: 'Kargo Takibi',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const CargoTrackingPage(),
+                    'Kargo takibi için giriş yapın',
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.replay,
                   title: 'İade Taleplerim',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const ReturnsPage(),
+                    'İade taleplerinizi görmek için giriş yapın',
+                  ),
                 ),
               ],
             ),
@@ -59,22 +218,38 @@ class ProfilePage extends StatelessWidget {
                 _MenuItem(
                   icon: Icons.person_outline,
                   title: 'Profil Bilgilerim',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const ProfileInfoPage(),
+                    'Profil bilgilerinizi görmek için giriş yapın',
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.location_on_outlined,
                   title: 'Adreslerim',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const AddressesPage(),
+                    'Adreslerinizi görmek için giriş yapın',
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.credit_card_outlined,
                   title: 'Kayıtlı Kartlarım',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const SavedCardsPage(),
+                    'Kayıtlı kartlarınızı görmek için giriş yapın',
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.lock_outline,
                   title: 'Şifre Değiştir',
-                  onTap: () {},
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const ChangePasswordPage(),
+                    'Şifre değiştirmek için giriş yapın',
+                  ),
                 ),
               ],
             ),
@@ -85,17 +260,26 @@ class ProfilePage extends StatelessWidget {
                 _MenuItem(
                   icon: Icons.help_outline,
                   title: 'Yardım & Destek',
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HelpSupportPage()),
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.description_outlined,
                   title: 'Yasal Bilgiler',
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LegalInfoPage()),
+                  ),
                 ),
                 _MenuItem(
                   icon: Icons.info_outline,
                   title: 'Hakkımızda',
-                  onTap: () {},
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutPage()),
+                  ),
                 ),
               ],
             ),
@@ -109,48 +293,153 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildUserHeader() {
-    // Giriş yapmamış kullanıcı için
-    return Container(
-      color: AppColors.surface,
-      padding: EdgeInsets.all(AppSpacing.lg),
-      child: Row(
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
-              shape: BoxShape.circle,
+  Widget _buildUserHeader(BuildContext context) {
+    final isLoggedIn = _authService.isLoggedIn;
+    final user = _authService.currentUser;
+
+    // Görüntülenecek isim
+    String displayName = 'Kullanıcı';
+    if (user != null) {
+      displayName = user.displayName;
+    }
+
+    // Görüntülenecek email/telefon
+    String subtitle = 'Giriş yaparak siparişlerinizi takip edebilirsiniz.';
+    if (isLoggedIn && user != null) {
+      subtitle = user.email ?? user.phone ?? '';
+    }
+
+    // Profil fotoğrafı için baş harf
+    String initial = 'K';
+    if (user?.fullName != null && user!.fullName!.isNotEmpty) {
+      initial = user.fullName!.substring(0, 1).toUpperCase();
+    } else if (user?.userName != null && user!.userName!.isNotEmpty) {
+      initial = user.userName!.substring(0, 1).toUpperCase();
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (isLoggedIn) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileInfoPage()),
+          );
+        } else {
+          _navigateToLogin();
+        }
+      },
+      child: Container(
+        color: AppColors.surface,
+        padding: EdgeInsets.all(AppSpacing.lg),
+        child: Row(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: _isLoadingUser
+                  ? Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : isLoggedIn
+                  ? (user?.profilePhoto != null &&
+                            user!.profilePhoto!.isNotEmpty
+                        ? ClipOval(
+                            child: Image.network(
+                              user.profilePhoto!,
+                              width: 70,
+                              height: 70,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Text(
+                                  initial,
+                                  style: AppTypography.h2.copyWith(
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              initial,
+                              style: AppTypography.h2.copyWith(
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ))
+                  : Icon(Icons.person, size: 36, color: AppColors.primary),
             ),
-            child: Icon(
-              Icons.person,
-              size: 36,
-              color: AppColors.primary,
+            SizedBox(width: AppSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _isLoadingUser
+                      ? Container(
+                          width: 120,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: AppRadius.borderRadiusSM,
+                          ),
+                        )
+                      : Text(
+                          isLoggedIn ? displayName : 'Giriş Yap',
+                          style: AppTypography.h4,
+                        ),
+                  SizedBox(height: AppSpacing.xs),
+                  _isLoadingUser
+                      ? Container(
+                          width: 180,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: AppRadius.borderRadiusSM,
+                          ),
+                        )
+                      : Text(
+                          subtitle,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                  // Kullanıcı puanı göster
+                  if (isLoggedIn && user?.rank != null && !_isLoadingUser) ...[
+                    SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        Icon(Icons.star, size: 14, color: AppColors.warning),
+                        SizedBox(width: 4),
+                        Text(
+                          '${user!.rank} Puan',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ),
-          SizedBox(width: AppSpacing.lg),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hoş Geldiniz',
-                  style: AppTypography.h4,
-                ),
-                SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Giriş yaparak siparişlerinizi takip edebilirsiniz.',
-                  style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                ),
-              ],
+            Icon(
+              isLoggedIn ? Icons.chevron_right : Icons.login,
+              color: isLoggedIn ? AppColors.textTertiary : AppColors.primary,
             ),
-          ),
-          Icon(
-            Icons.chevron_right,
-            color: AppColors.textTertiary,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -203,28 +492,13 @@ class ProfilePage extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
-                borderRadius: AppRadius.borderRadiusSM,
-              ),
-              child: Icon(
-                item.icon,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
+              decoration: BoxDecoration(borderRadius: AppRadius.borderRadiusSM),
+              child: Icon(item.icon, color: AppColors.textSecondary, size: 20),
             ),
             SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                item.title,
-                style: AppTypography.bodyMedium,
-              ),
-            ),
+            Expanded(child: Text(item.title, style: AppTypography.bodyMedium)),
             SizedBox(width: AppSpacing.sm),
-            Icon(
-              Icons.chevron_right,
-              color: AppColors.textTertiary,
-              size: 20,
-            ),
+            Icon(Icons.chevron_right, color: AppColors.textTertiary, size: 20),
           ],
         ),
       ),
@@ -232,28 +506,48 @@ class ProfilePage extends StatelessWidget {
   }
 
   Widget _buildLogoutButton(BuildContext context) {
+    final isLoggedIn = _authService.isLoggedIn;
+
     return Container(
       color: AppColors.surface,
       padding: EdgeInsets.all(AppSpacing.lg),
       child: SizedBox(
         width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: () {
-            // Çıkış yap
-          },
-          icon: Icon(Icons.logout, color: AppColors.error),
-          label: Text(
-            'Çıkış Yap',
-            style: AppTypography.buttonMedium.copyWith(color: AppColors.error),
-          ),
-          style: OutlinedButton.styleFrom(
-            padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-            side: BorderSide(color: AppColors.error),
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.borderRadiusSM,
-            ),
-          ),
-        ),
+        child: isLoggedIn
+            ? OutlinedButton.icon(
+                onPressed: _logout,
+                icon: Icon(Icons.logout, color: AppColors.error),
+                label: Text(
+                  'Çıkış Yap',
+                  style: AppTypography.buttonMedium.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  side: BorderSide(color: AppColors.error),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.borderRadiusSM,
+                  ),
+                ),
+              )
+            : ElevatedButton.icon(
+                onPressed: _navigateToLogin,
+                icon: const Icon(Icons.login, color: Colors.white),
+                label: Text(
+                  'Giriş Yap',
+                  style: AppTypography.buttonMedium.copyWith(
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.borderRadiusSM,
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -264,9 +558,5 @@ class _MenuItem {
   final String title;
   final VoidCallback onTap;
 
-  _MenuItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
+  _MenuItem({required this.icon, required this.title, required this.onTap});
 }
