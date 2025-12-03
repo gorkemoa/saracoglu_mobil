@@ -4,6 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/api_constants.dart';
 import '../core/constants/app_constants.dart';
 import '../models/auth/login_model.dart';
+import '../models/auth/register_model.dart';
+import '../models/auth/code_check_model.dart';
+import '../models/auth/send_verification_code_model.dart';
 import '../models/user/user_model.dart';
 import '../models/user/update_user_model.dart';
 import '../models/user/update_password_model.dart';
@@ -32,6 +35,11 @@ class AuthService extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   bool _isInitialized = false;
+  
+  // Register için geçici token'lar
+  String? _pendingCodeToken;
+  int? _pendingUserId;
+  String? _pendingUserToken;
   
   // 403 hatası için global context (Navigator için)
   static GlobalKey<NavigatorState>? navigatorKey;
@@ -183,10 +191,257 @@ class AuthService extends ChangeNotifier {
   Future<void> logout() async {
     await _clearStoredCredentials();
     _currentUser = null;
+    _pendingCodeToken = null;
+    _pendingUserId = null;
+    _pendingUserToken = null;
     _networkService.clearAuthToken();
     notifyListeners();
   }
 
+  /// Kayıt ol
+  Future<RegisterResponse> register(RegisterRequest request) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _networkService.post(
+        ApiConstants.register,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = RegisterResponse.fromJson(result.data!);
+
+        if (response.isSuccess && response.data != null) {
+          // codeToken ve userToken'ı kaydet (doğrulama için)
+          _pendingCodeToken = response.data!.codeToken;
+          _pendingUserId = response.data!.userID;
+          _pendingUserToken = response.data!.userToken;
+        }
+
+        notifyListeners();
+        return response;
+      } else {
+        notifyListeners();
+        return RegisterResponse(
+          error: true,
+          success: false,
+          successMessage: result.errorMessage ?? 'Kayıt başarısız',
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return RegisterResponse(
+        error: true,
+        success: false,
+        successMessage: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Doğrulama kodu kontrol et
+  Future<CodeCheckResponse> checkCode(String code) async {
+    if (_pendingCodeToken == null) {
+      return CodeCheckResponse(
+        error: true,
+        success: false,
+        successMessage: 'Doğrulama token\'ı bulunamadı',
+      );
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final request = CodeCheckRequest(
+        code: code,
+        codeToken: _pendingCodeToken!,
+      );
+
+      final result = await _networkService.post(
+        ApiConstants.checkCode,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = CodeCheckResponse.fromJson(result.data!);
+
+        if (response.isSuccess && response.data != null) {
+          // passToken == userToken, kullanıcıyı giriş yaptır
+          final userToken = response.data!.passToken;
+          
+          // Token'ı network service'e kaydet
+          _networkService.setAuthToken(userToken);
+
+          // Kullanıcı modelini oluştur
+          _currentUser = UserModel(
+            id: _pendingUserId!,
+            token: userToken,
+          );
+
+          // Credentials'ı kaydet (kalıcı oturum)
+          await _saveCredentials(_pendingUserId!, userToken);
+
+          // Geçici token'ları temizle
+          _pendingCodeToken = null;
+          _pendingUserId = null;
+          _pendingUserToken = null;
+
+          notifyListeners();
+        }
+
+        return response;
+      } else {
+        notifyListeners();
+        return CodeCheckResponse(
+          error: true,
+          success: false,
+          successMessage: result.errorMessage ?? 'Doğrulama başarısız',
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return CodeCheckResponse(
+        error: true,
+        success: false,
+        successMessage: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Bekleyen codeToken var mı?
+  bool get hasPendingVerification => _pendingCodeToken != null;
+
+  /// Doğrulama kodu gönder (giriş yapmış kullanıcılar için)
+  /// sendType: 1 = SMS, 2 = E-posta
+  Future<SendVerificationCodeResponse> sendVerificationCode(int sendType) async {
+    if (_currentUser == null) {
+      return SendVerificationCodeResponse(
+        error: true,
+        success: false,
+        message: 'Kullanıcı bilgisi bulunamadı',
+      );
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final request = SendVerificationCodeRequest(
+        userToken: _currentUser!.token,
+        sendType: sendType,
+      );
+
+      final result = await _networkService.post(
+        ApiConstants.sendVerificationCode,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = SendVerificationCodeResponse.fromJson(result.data!);
+
+        if (response.isSuccess && response.data != null) {
+          // codeToken'ı kaydet (doğrulama için)
+          _pendingCodeToken = response.data!.codeToken;
+          _pendingUserId = _currentUser!.id;
+          _pendingUserToken = _currentUser!.token;
+        }
+
+        notifyListeners();
+        return response;
+      } else {
+        notifyListeners();
+        return SendVerificationCodeResponse(
+          error: true,
+          success: false,
+          message: result.errorMessage ?? 'Kod gönderme başarısız',
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return SendVerificationCodeResponse(
+        error: true,
+        success: false,
+        message: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// E-posta doğrulama kodu kontrol et (giriş yapmış kullanıcılar için)
+  Future<CodeCheckResponse> verifyEmailCode(String code) async {
+    if (_pendingCodeToken == null) {
+      return CodeCheckResponse(
+        error: true,
+        success: false,
+        successMessage: 'Doğrulama token\'ı bulunamadı',
+      );
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final request = CodeCheckRequest(
+        code: code,
+        codeToken: _pendingCodeToken!,
+      );
+
+      final result = await _networkService.post(
+        ApiConstants.checkCode,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = CodeCheckResponse.fromJson(result.data!);
+
+        if (response.isSuccess) {
+          // Doğrulama başarılı, kullanıcı bilgilerini güncelle
+          if (_currentUser != null) {
+            _currentUser = _currentUser!.copyWith(isApproved: true);
+          }
+
+          // Geçici token'ları temizle
+          _pendingCodeToken = null;
+          _pendingUserId = null;
+          _pendingUserToken = null;
+
+          notifyListeners();
+        }
+
+        return response;
+      } else {
+        notifyListeners();
+        return CodeCheckResponse(
+          error: true,
+          success: false,
+          successMessage: result.errorMessage ?? 'Doğrulama başarısız',
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return CodeCheckResponse(
+        error: true,
+        success: false,
+        successMessage: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
 
 
   /// Kullanıcı bilgilerini getir (getUser - PUT)

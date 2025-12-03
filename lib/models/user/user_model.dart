@@ -8,7 +8,7 @@ class UserModel {
   final String? fullName;
   final String? email;
   final String? phone;
-  final String? rank;
+  final bool? isApproved;
   final String? gender;
   final String? birthday;
   final String token;
@@ -26,7 +26,7 @@ class UserModel {
     this.fullName,
     this.email,
     this.phone,
-    this.rank,
+    this.isApproved,
     this.gender,
     this.birthday,
     required this.token,
@@ -58,7 +58,7 @@ class UserModel {
       fullName: json['userFullname'],
       email: json['userEmail'],
       phone: json['userPhone'],
-      rank: json['userRank'],
+      isApproved: json['isApproved'],
       gender: json['userGender'],
       birthday: json['userBirthday'],
       token: json['userToken'] ?? '',
@@ -79,7 +79,7 @@ class UserModel {
       'userFullname': fullName,
       'userEmail': email,
       'userPhone': phone,
-      'userRank': rank,
+      'isApproved': isApproved,
       'userGender': gender,
       'userBirthday': birthday,
       'userToken': token,
@@ -99,7 +99,7 @@ class UserModel {
     String? fullName,
     String? email,
     String? phone,
-    String? rank,
+    bool? isApproved,
     String? gender,
     String? birthday,
     String? token,
@@ -117,7 +117,7 @@ class UserModel {
       fullName: fullName ?? this.fullName,
       email: email ?? this.email,
       phone: phone ?? this.phone,
-      rank: rank ?? this.rank,
+      isApproved: isApproved ?? this.isApproved,
       gender: gender ?? this.gender,
       birthday: birthday ?? this.birthday,
       token: token ?? this.token,

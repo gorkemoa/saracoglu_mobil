@@ -4,6 +4,8 @@ import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
 import '../../models/user/user_model.dart';
 import '../../models/user/update_user_model.dart';
+import '../../models/auth/send_verification_code_model.dart';
+import '../auth/code_verification_page.dart';
 
 class ProfileInfoPage extends StatefulWidget {
   const ProfileInfoPage({super.key});
@@ -108,6 +110,79 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
   }
 
   UserModel? get _user => _authService.currentUser;
+
+  /// E-posta doğrulama başlat
+  Future<void> _startEmailVerification(UserModel user) async {
+    // Loading göster
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: AppRadius.borderRadiusMD,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: AppSpacing.md),
+              Text('Doğrulama kodu gönderiliyor...', style: AppTypography.bodyMedium),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Kod gönder
+    final response = await _authService.sendVerificationCode(SendCodeType.email);
+
+    // Loading kapat
+    if (mounted) Navigator.pop(context);
+
+    if (response.isSuccess && mounted) {
+      // Doğrulama sayfasına git
+      final verified = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CodeVerificationPage(
+            email: user.email ?? '',
+            verificationType: VerificationType.emailVerification,
+          ),
+        ),
+      );
+
+      if (verified == true && mounted) {
+        // Başarılı doğrulama, kullanıcı bilgilerini yenile
+        _refreshUserData();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('E-posta adresiniz doğrulandı!'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response.message ?? 'Kod gönderilemedi'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.borderRadiusSM,
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -278,30 +353,45 @@ class _ProfileInfoPageState extends State<ProfileInfoPage> {
                 color: AppColors.textSecondary,
               ),
             ),
-          if (user?.rank != null) ...[
+          if (user?.isApproved != null) ...[
             SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withOpacity(0.1),
-                borderRadius: AppRadius.borderRadiusSM,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.star, size: 16, color: AppColors.warning),
-                  SizedBox(width: 4),
-                  Text(
-                    '${user!.rank} Puan',
-                    style: AppTypography.labelSmall.copyWith(
-                      color: AppColors.warning,
-                      fontWeight: FontWeight.bold,
+            GestureDetector(
+              onTap: user!.isApproved! ? null : () => _startEmailVerification(user),
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: user.isApproved! ? AppColors.success.withOpacity(0.1) : AppColors.warning.withOpacity(0.1),
+                  borderRadius: AppRadius.borderRadiusSM,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      user.isApproved! ? Icons.verified : Icons.warning_amber_rounded,
+                      size: 16,
+                      color: user.isApproved! ? AppColors.success : AppColors.warning,
                     ),
-                  ),
-                ],
+                    SizedBox(width: 4),
+                    Text(
+                      user.isApproved! ? 'E-posta Doğrulandı' : 'E-posta Doğrulanmadı',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: user.isApproved! ? AppColors.success : AppColors.warning,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (!user.isApproved!) ...[
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.touch_app,
+                        size: 14,
+                        color: AppColors.warning,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],

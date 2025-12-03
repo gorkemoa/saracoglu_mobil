@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
   final String? redirectMessage;
@@ -313,19 +314,18 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          // TODO: Kayıt sayfasına git
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Kayıt özelliği yakında aktif olacak'),
-                              backgroundColor: AppColors.info,
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.all(AppSpacing.md),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.borderRadiusSM,
-                              ),
+                        onTap: () async {
+                          final result = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
                             ),
                           );
+                          
+                          if (result == true && mounted) {
+                            // Kayıt başarılı, login sayfasını da kapat
+                            Navigator.pop(context, true);
+                          }
                         },
                         child: Text(
                           'Kayıt Ol',

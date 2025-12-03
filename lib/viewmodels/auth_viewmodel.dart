@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/constants/app_constants.dart';
 import '../models/auth/login_model.dart';
+import '../models/auth/register_model.dart';
 import '../models/user/user_model.dart';
 import '../services/auth_service.dart';
 
@@ -86,4 +88,73 @@ class AuthViewModel extends ChangeNotifier {
     await _authService.logout();
     clearState();
   }
+
+  /// Register işlemi
+  Future<bool> register({
+    required String firstName,
+    required String lastName,
+    required String userName,
+    required String email,
+    required String password,
+  }) async {
+    clearState();
+    _setLoading(true);
+
+    try {
+      final request = RegisterRequest(
+        userFirstname: firstName,
+        userLastname: lastName,
+        userName: userName,
+        userEmail: email,
+        userPassword: password,
+        version: AppConstants.appVersion,
+        platform: AppConstants.platform,
+      );
+
+      final response = await _authService.register(request);
+
+      _setLoading(false);
+
+      if (response.isSuccess) {
+        _setSuccess();
+        return true;
+      } else {
+        // API'den gelen hata mesajını göster
+        _setError(response.successMessage ?? 'Kayıt başarısız');
+        return false;
+      }
+    } catch (e) {
+      _setLoading(false);
+      _setError('Bir hata oluştu: ${e.toString()}');
+      return false;
+    }
+  }
+
+  /// Doğrulama kodu kontrol et
+  Future<bool> verifyCode(String code) async {
+    clearState();
+    _setLoading(true);
+
+    try {
+      final response = await _authService.checkCode(code);
+
+      _setLoading(false);
+
+      if (response.isSuccess) {
+        _setSuccess();
+        return true;
+      } else {
+        // API'den gelen hata mesajını göster
+        _setError(response.successMessage ?? 'Doğrulama başarısız');
+        return false;
+      }
+    } catch (e) {
+      _setLoading(false);
+      _setError('Bir hata oluştu: ${e.toString()}');
+      return false;
+    }
+  }
+
+  /// Bekleyen doğrulama var mı?
+  bool get hasPendingVerification => _authService.hasPendingVerification;
 }

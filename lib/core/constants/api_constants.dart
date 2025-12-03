@@ -21,6 +21,9 @@ class ApiConstants {
 
   /// Auth Endpoints
   static const String login = 'service/auth/login';
+  static const String register = 'service/auth/register';
+  static const String checkCode = 'service/auth/code/checkCode';
+  static const String sendVerificationCode = 'service/auth/code/authSendCode';
 
 
   /// User Endpoints
