@@ -7,6 +7,7 @@ import '../models/auth/login_model.dart';
 import '../models/auth/register_model.dart';
 import '../models/auth/code_check_model.dart';
 import '../models/auth/send_verification_code_model.dart';
+import '../models/auth/forgot_password_model.dart';
 import '../models/user/user_model.dart';
 import '../models/user/update_user_model.dart';
 import '../models/user/update_password_model.dart';
@@ -422,6 +423,110 @@ class AuthService extends ChangeNotifier {
           notifyListeners();
         }
 
+        return response;
+      } else {
+        notifyListeners();
+        return CodeCheckResponse(
+          error: true,
+          success: false,
+          successMessage: result.errorMessage ?? 'Doğrulama başarısız',
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return CodeCheckResponse(
+        error: true,
+        success: false,
+        successMessage: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Şifremi unuttum - doğrulama kodu gönder
+  Future<ForgotPasswordResponse> forgotPassword(String email) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final request = ForgotPasswordRequest(userEmail: email);
+
+      final result = await _networkService.post(
+        ApiConstants.forgotPassword,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = ForgotPasswordResponse.fromJson(result.data!);
+
+        if (response.isSuccess && response.data != null) {
+          // codeToken'ı kaydet (doğrulama için)
+          _pendingCodeToken = response.data!.codeToken;
+          _pendingUserId = response.data!.userId;
+        }
+
+        notifyListeners();
+        return response;
+      } else {
+        notifyListeners();
+        return ForgotPasswordResponse(
+          error: true,
+          success: false,
+          message: result.errorMessage ?? 'İşlem başarısız',
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return ForgotPasswordResponse(
+        error: true,
+        success: false,
+        message: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Şifre sıfırlama doğrulama kodu kontrolü
+  Future<CodeCheckResponse> verifyForgotPasswordCode(String code) async {
+    if (_pendingCodeToken == null) {
+      return CodeCheckResponse(
+        error: true,
+        success: false,
+        successMessage: 'Doğrulama token\'ı bulunamadı',
+      );
+    }
+
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final request = CodeCheckRequest(
+        code: code,
+        codeToken: _pendingCodeToken!,
+      );
+
+      final result = await _networkService.post(
+        ApiConstants.checkCode,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = CodeCheckResponse.fromJson(result.data!);
+
+        if (response.isSuccess) {
+          // Geçici token'ları temizle
+          _pendingCodeToken = null;
+          _pendingUserId = null;
+          _pendingUserToken = null;
+        }
+
+        notifyListeners();
         return response;
       } else {
         notifyListeners();

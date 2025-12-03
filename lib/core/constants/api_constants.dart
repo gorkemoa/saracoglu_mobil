@@ -24,6 +24,7 @@ class ApiConstants {
   static const String register = 'service/auth/register';
   static const String checkCode = 'service/auth/code/checkCode';
   static const String sendVerificationCode = 'service/auth/code/authSendCode';
+  static const String forgotPassword = 'service/auth/forgotPassword';
 
 
   /// User Endpoints
@@ -36,6 +37,15 @@ class ApiConstants {
   /// deleteUser endpoint
   static const String deleteUser = 'service/user/account/delete';
 
+  /// Address Endpoints
+  static const String addAddress = 'service/user/account/address/add';
+
+  /// Location Endpoints
+  static const String getCities = 'service/general/general/cities/all';
+  /// İlçeler - kullanımı: '${ApiConstants.getDistricts}/$cityNo/districts'
+  static const String getDistricts = 'service/general/general';
+  /// Mahalleler - kullanımı: '${ApiConstants.getNeighbourhoods}/$districtNo/neighbourhood'
+  static const String getNeighbourhoods = 'service/general/general';
 
 
 }

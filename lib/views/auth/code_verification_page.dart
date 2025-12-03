@@ -9,6 +9,7 @@ import '../../models/auth/send_verification_code_model.dart';
 enum VerificationType {
   register, // Kayıt sonrası doğrulama
   emailVerification, // Giriş yapmış kullanıcı için e-posta doğrulama
+  forgotPassword, // Şifremi unuttum doğrulama
 }
 
 class CodeVerificationPage extends StatefulWidget {
@@ -69,6 +70,27 @@ class _CodeVerificationPageState extends State<CodeVerificationPage> {
     if (widget.verificationType == VerificationType.emailVerification) {
       // E-posta doğrulama için yeniden kod gönder
       final response = await _authService.sendVerificationCode(SendCodeType.email);
+      
+      setState(() => _isResending = false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.isSuccess 
+                ? response.message ?? 'Kod tekrar gönderildi'
+                : response.message ?? 'Kod gönderilemedi'),
+            backgroundColor: response.isSuccess ? AppColors.success : AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    } else if (widget.verificationType == VerificationType.forgotPassword) {
+      // Şifremi unuttum için yeniden kod gönder
+      final response = await _authService.forgotPassword(widget.email);
       
       setState(() => _isResending = false);
 
@@ -151,6 +173,11 @@ class _CodeVerificationPageState extends State<CodeVerificationPage> {
       final authViewModel = AuthViewModel();
       success = await authViewModel.verifyCode(_code);
       errorMessage = authViewModel.errorMessage;
+    } else if (widget.verificationType == VerificationType.forgotPassword) {
+      // Şifremi unuttum doğrulama
+      final response = await _authService.verifyForgotPasswordCode(_code);
+      success = response.isSuccess;
+      errorMessage = response.successMessage;
     } else {
       // E-posta doğrulama (giriş yapmış kullanıcı)
       final response = await _authService.verifyEmailCode(_code);
@@ -163,9 +190,13 @@ class _CodeVerificationPageState extends State<CodeVerificationPage> {
     if (success && mounted) {
       HapticFeedback.heavyImpact();
       
+      final successMessage = widget.verificationType == VerificationType.forgotPassword
+          ? 'Doğrulama başarılı! Şifrenizi sıfırlayabilirsiniz.'
+          : 'Hesabınız başarıyla doğrulandı!';
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Hesabınız başarıyla doğrulandı!'),
+          content: Text(successMessage),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
@@ -254,7 +285,9 @@ class _CodeVerificationPageState extends State<CodeVerificationPage> {
                 // Başlık
                 Center(
                   child: Text(
-                    'E-posta Doğrulama',
+                    widget.verificationType == VerificationType.forgotPassword
+                        ? 'Şifre Sıfırlama'
+                        : 'E-posta Doğrulama',
                     style: AppTypography.h1.copyWith(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
@@ -267,7 +300,9 @@ class _CodeVerificationPageState extends State<CodeVerificationPage> {
                 // Açıklama
                 Center(
                   child: Text(
-                    'Aşağıdaki adrese gönderilen 6 haneli doğrulama kodunu girin',
+                    widget.verificationType == VerificationType.forgotPassword
+                        ? 'Şifre sıfırlama için gönderilen 6 haneli doğrulama kodunu girin'
+                        : 'Aşağıdaki adrese gönderilen 6 haneli doğrulama kodunu girin',
                     style: AppTypography.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),

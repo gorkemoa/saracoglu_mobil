@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+import '../../services/auth_service.dart';
 import 'register_page.dart';
+import 'code_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   final String? redirectMessage;
@@ -350,132 +352,209 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showForgotPasswordSheet() {
     final emailController = TextEditingController();
+    bool isLoading = false;
+    final authService = AuthService();
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          padding: EdgeInsets.all(AppSpacing.xl),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: AppRadius.borderRadiusRound,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: EdgeInsets.all(AppSpacing.xl),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: AppRadius.borderRadiusRound,
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(height: AppSpacing.xl),
+                  SizedBox(height: AppSpacing.xl),
 
-                Text(
-                  'Şifre Sıfırlama',
-                  style: AppTypography.h3,
-                ),
-                SizedBox(height: AppSpacing.sm),
-                Text(
-                  'E-posta adresinizi girin, şifre sıfırlama bağlantısı göndereceğiz.',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                  Text(
+                    'Şifre Sıfırlama',
+                    style: AppTypography.h3,
                   ),
-                ),
-
-                SizedBox(height: AppSpacing.xl),
-
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: AppTypography.bodyLarge,
-                  decoration: InputDecoration(
-                    hintText: 'E-posta adresiniz',
-                    hintStyle: AppTypography.bodyLarge.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.md + 4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                  SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'E-posta adresinizi girin, şifre sıfırlama doğrulama kodu göndereceğiz.',
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
                     ),
                   ),
-                ),
 
-                SizedBox(height: AppSpacing.xl),
+                  SizedBox(height: AppSpacing.xl),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (emailController.text.isNotEmpty) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Şifre sıfırlama bağlantısı gönderildi'),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                            margin: EdgeInsets.all(AppSpacing.md),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: AppRadius.borderRadiusSM,
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    style: AppTypography.bodyLarge,
+                    decoration: InputDecoration(
+                      hintText: 'E-posta adresiniz',
+                      hintStyle: AppTypography.bodyLarge.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                      filled: true,
+                      fillColor: AppColors.background,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md + 4,
+                      ),
+                      border: OutlineInputBorder(
                         borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide(color: AppColors.border),
                       ),
-                    ),
-                    child: Text(
-                      'Gönder',
-                      style: AppTypography.buttonMedium.copyWith(color: Colors.white),
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: AppSpacing.md),
-
-                Center(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      'Vazgeç',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide(color: AppColors.primary, width: 2),
                       ),
                     ),
                   ),
-                ),
-              ],
+
+                  SizedBox(height: AppSpacing.xl),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : () async {
+                        if (emailController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Lütfen e-posta adresinizi girin'),
+                              backgroundColor: AppColors.warning,
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.all(AppSpacing.md),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.borderRadiusSM,
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+
+                        setModalState(() => isLoading = true);
+
+                        final response = await authService.forgotPassword(
+                          emailController.text.trim(),
+                        );
+
+                        setModalState(() => isLoading = false);
+
+                        if (response.isSuccess && context.mounted) {
+                          // API'den gelen başarı mesajını göster
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(response.message ?? 'Doğrulama kodu gönderildi'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.all(AppSpacing.md),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.borderRadiusSM,
+                              ),
+                            ),
+                          );
+                          
+                          Navigator.pop(context);
+                          
+                          // Doğrulama sayfasına yönlendir
+                          final verified = await Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CodeVerificationPage(
+                                email: emailController.text.trim(),
+                                verificationType: VerificationType.forgotPassword,
+                              ),
+                            ),
+                          );
+
+                          if (verified == true && mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Şifreniz sıfırlandı. Yeni şifreniz e-posta adresinize gönderildi.'),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.all(AppSpacing.md),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                ),
+                              ),
+                            );
+                          }
+                        } else if (context.mounted) {
+                          // API'den gelen hata mesajını göster (417, 400 vs.)
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(response.message ?? 'İşlem başarısız'),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.all(AppSpacing.md),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.borderRadiusSM,
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.borderRadiusMD,
+                        ),
+                        disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                      ),
+                      child: isLoading
+                          ? SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(
+                              'Gönder',
+                              style: AppTypography.buttonMedium.copyWith(color: Colors.white),
+                            ),
+                    ),
+                  ),
+
+                  SizedBox(height: AppSpacing.md),
+
+                  Center(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Vazgeç',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
