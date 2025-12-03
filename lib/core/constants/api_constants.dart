@@ -39,6 +39,12 @@ class ApiConstants {
 
   /// Address Endpoints
   static const String addAddress = 'service/user/account/address/add';
+  static const String getUserAddresses = 'service/user/account/address/list';
+  static const String updateAddress = 'service/user/account/address/update';
+  static const String deleteAddress = 'service/user/account/address/delete';
+
+  /// Coupon Endpoints
+  static const String getUserCoupons = 'service/user/account/coupon/list';
 
   /// Location Endpoints
   static const String getCities = 'service/general/general/cities/all';

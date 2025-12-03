@@ -9,6 +9,7 @@ import 'profile/cargo_tracking_page.dart';
 import 'profile/returns_page.dart';
 import 'profile/profile_info_page.dart';
 import 'profile/addresses_page.dart';
+import 'profile/coupons_page.dart';
 import 'profile/saved_cards_page.dart';
 import 'profile/change_password_page.dart';
 import 'profile/help_support_page.dart';
@@ -385,6 +386,15 @@ class _ProfilePageState extends State<ProfilePage> {
                     context,
                     const SavedCardsPage(),
                     'Kayıtlı kartlarınızı görmek için giriş yapın',
+                  ),
+                ),
+                _MenuItem(
+                  icon: Icons.local_offer_outlined,
+                  title: 'Kuponlarım',
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const CouponsPage(),
+                    'Kuponlarınızı görmek için giriş yapın',
                   ),
                 ),
                 _MenuItem(

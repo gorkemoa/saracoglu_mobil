@@ -1,5 +1,7 @@
 import '../core/constants/api_constants.dart';
 import '../models/address/add_address_model.dart';
+import '../models/address/update_address_model.dart';
+import '../models/address/user_address_model.dart';
 import 'network_service.dart';
 import 'auth_service.dart';
 
@@ -11,6 +13,30 @@ class AddressService {
 
   final NetworkService _networkService = NetworkService();
   final AuthService _authService = AuthService();
+
+  /// Kullanıcının adreslerini getir
+  Future<UserAddressesResponse> getAddresses() async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return UserAddressesResponse.errorResponse('Oturum açmanız gerekiyor');
+      }
+
+      final result = await _networkService.get(
+        '${ApiConstants.getUserAddresses}?userToken=$token',
+      );
+
+      if (result.isSuccess && result.data != null) {
+        return UserAddressesResponse.fromJson(result.data!);
+      } else {
+        return UserAddressesResponse.errorResponse(
+          result.errorMessage ?? 'Adresler yüklenirken bir hata oluştu',
+        );
+      }
+    } catch (e) {
+      return UserAddressesResponse.errorResponse('Bir hata oluştu: ${e.toString()}');
+    }
+  }
 
   /// Yeni adres ekle
   Future<AddAddressResponse> addAddress(AddAddressRequest request) async {
@@ -29,6 +55,56 @@ class AddressService {
       }
     } catch (e) {
       return AddAddressResponse.errorResponse('Bir hata oluştu: ${e.toString()}');
+    }
+  }
+
+  /// Adres güncelle
+  Future<UpdateAddressResponse> updateAddress(UpdateAddressRequest request) async {
+    try {
+      final result = await _networkService.put(
+        ApiConstants.updateAddress,
+        body: request.toJson(),
+      );
+
+      if (result.isSuccess && result.data != null) {
+        return UpdateAddressResponse.fromJson(result.data!);
+      } else {
+        return UpdateAddressResponse.errorResponse(
+          result.errorMessage ?? 'Adres güncellenirken bir hata oluştu',
+        );
+      }
+    } catch (e) {
+      return UpdateAddressResponse.errorResponse('Bir hata oluştu: ${e.toString()}');
+    }
+  }
+
+  /// Adres sil
+  Future<DeleteAddressResponse> deleteAddress(int addressID) async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return DeleteAddressResponse.errorResponse('Oturum açmanız gerekiyor');
+      }
+
+      final request = DeleteAddressRequest(
+        userToken: token,
+        addressID: addressID,
+      );
+
+      final result = await _networkService.delete(
+        ApiConstants.deleteAddress,
+        body: request.toJson(),
+      );
+
+      if (result.isSuccess && result.data != null) {
+        return DeleteAddressResponse.fromJson(result.data!);
+      } else {
+        return DeleteAddressResponse.errorResponse(
+          result.errorMessage ?? 'Adres silinirken bir hata oluştu',
+        );
+      }
+    } catch (e) {
+      return DeleteAddressResponse.errorResponse('Bir hata oluştu: ${e.toString()}');
     }
   }
 

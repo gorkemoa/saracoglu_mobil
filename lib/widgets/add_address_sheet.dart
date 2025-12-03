@@ -62,6 +62,29 @@ class _AddNewAddressSheetState extends State<AddNewAddressSheet> {
     {'title': 'Diğer', 'icon': Icons.location_on_outlined},
   ];
 
+  /// Telefon numarasını "533 170 58 87" formatına çevirir
+  /// Girdi: 05331705887, +905331705887, 5331705887, 0533 170 58 87 vb.
+  /// Çıktı: 533 170 58 87
+  String _formatPhoneNumber(String phone) {
+    // Sadece rakamları al
+    String digits = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    // Başındaki 90 veya 0'ı kaldır
+    if (digits.startsWith('90') && digits.length > 10) {
+      digits = digits.substring(2);
+    } else if (digits.startsWith('0') && digits.length > 10) {
+      digits = digits.substring(1);
+    }
+    
+    // 10 haneli numara olmalı
+    if (digits.length != 10) {
+      return phone; // Geçersiz format, orijinali döndür
+    }
+    
+    // "533 170 58 87" formatında döndür
+    return '${digits.substring(0, 3)} ${digits.substring(3, 6)} ${digits.substring(6, 8)} ${digits.substring(8, 10)}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -160,13 +183,16 @@ class _AddNewAddressSheetState extends State<AddNewAddressSheet> {
     HapticFeedback.lightImpact();
 
     try {
+      // Telefon numarasını formatla: "533 170 58 87" formatında
+      final formattedPhone = _formatPhoneNumber(_phoneController.text.trim());
+
       final request = AddAddressRequest(
         userToken: _addressService.userToken ?? '',
         userFirstName: _firstNameController.text.trim(),
         userLastName: _lastNameController.text.trim(),
         addressTitle: _titleController.text.trim(),
         addressType: _invoiceType,
-        addressPhone: _phoneController.text.trim(),
+        addressPhone: formattedPhone,
         addressEmail: _emailController.text.trim(),
         addressCityID: _selectedCity!.no.toString(),
         addressDistrictID: _selectedDistrict!.no.toString(),
