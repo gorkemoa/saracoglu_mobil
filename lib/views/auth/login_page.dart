@@ -460,36 +460,14 @@ class _LoginPageState extends State<LoginPage> {
                         setModalState(() => isLoading = false);
 
                         if (response.isSuccess && context.mounted) {
-                          // API'den gelen başarı mesajını göster
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(response.message ?? 'Doğrulama kodu gönderildi'),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.all(AppSpacing.md),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.borderRadiusSM,
-                              ),
-                            ),
-                          );
-                          
+                          // Bottom sheet'i kapat
                           Navigator.pop(context);
                           
-                          // Doğrulama sayfasına yönlendir
-                          final verified = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CodeVerificationPage(
-                                email: emailController.text.trim(),
-                                verificationType: VerificationType.forgotPassword,
-                              ),
-                            ),
-                          );
-
-                          if (verified == true && mounted) {
+                          // Kapat sonra mesaj göster
+                          if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Text('Şifreniz sıfırlandı. Yeni şifreniz e-posta adresinize gönderildi.'),
+                                content: Text(response.message ?? 'Doğrulama kodu gönderildi'),
                                 backgroundColor: AppColors.success,
                                 behavior: SnackBarBehavior.floating,
                                 margin: EdgeInsets.all(AppSpacing.md),
@@ -499,19 +477,52 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                             );
                           }
+                          
+                          // Doğrulama sayfasına yönlendir
+                          if (mounted) {
+                            final verified = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CodeVerificationPage(
+                                  email: emailController.text.trim(),
+                                  verificationType: VerificationType.forgotPassword,
+                                ),
+                              ),
+                            );
+
+                            if (verified == true && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Şifreniz sıfırlandı. Yeni şifreniz e-posta adresinize gönderildi.'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.all(AppSpacing.md),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: AppRadius.borderRadiusSM,
+                                  ),
+                                ),
+                              );
+                            }
+                          }
                         } else if (context.mounted) {
                           // API'den gelen hata mesajını göster (417, 400 vs.)
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(response.message ?? 'İşlem başarısız'),
-                              backgroundColor: AppColors.error,
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.all(AppSpacing.md),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.borderRadiusSM,
+                          // Bottom sheet'i kapat
+                          Navigator.pop(context);
+                          
+                          // Kapat sonra mesaj göster
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(response.message ?? 'İşlem başarısız'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.all(AppSpacing.md),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         }
                       },
                       style: ElevatedButton.styleFrom(
