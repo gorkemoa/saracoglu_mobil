@@ -4,15 +4,15 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
 import '../services/auth_service.dart';
-import 'product_detail_page.dart'; 
+import '../services/product_service.dart';
+import '../models/product/product_model.dart';
+import 'product_detail_page.dart';
+import 'all_products_page.dart';
 
 class HomeContent extends StatefulWidget {
   final VoidCallback? onSearchTap;
-  
-  const HomeContent({
-    super.key,
-    this.onSearchTap,
-  });
+
+  const HomeContent({super.key, this.onSearchTap});
 
   @override
   State<HomeContent> createState() => _HomeContentState();
@@ -23,25 +23,58 @@ class _HomeContentState extends State<HomeContent> {
   final PageController _bannerController = PageController();
   Timer? _bannerTimer;
 
+  // Product service
+  final ProductService _productService = ProductService();
+
+  // Yeni ürünler state
+  List<ProductModel> _newProducts = [];
+  bool _isLoadingNewProducts = true;
+
+  // Kampanyalı ürünler state
+  List<ProductModel> _campaignProducts = [];
+  bool _isLoadingCampaignProducts = true;
+
   final List<Map<String, dynamic>> _banners = [
-    {
-      'image': 'assets/slider/1.png',
-    },
-    {
-      'image': 'assets/slider/2.png',
-    },
-    {
-      'image': 'assets/slider/3.png',
-    },
-    {
-      'image': 'assets/slider/4.png',
-    },
+    {'image': 'assets/slider/1.png'},
+    {'image': 'assets/slider/2.png'},
+    {'image': 'assets/slider/3.png'},
+    {'image': 'assets/slider/4.png'},
   ];
 
   @override
   void initState() {
     super.initState();
     _startBannerTimer();
+    _loadProducts();
+  }
+
+  /// Ürünleri yükle
+  Future<void> _loadProducts() async {
+    await Future.wait([_loadNewProducts(), _loadCampaignProducts()]);
+  }
+
+  /// Yeni ürünleri yükle (tüm sayfalardan)
+  Future<void> _loadNewProducts() async {
+    final products = await _productService.getAllNewProducts(maxProducts: 10);
+    if (mounted) {
+      setState(() {
+        _isLoadingNewProducts = false;
+        _newProducts = products;
+      });
+    }
+  }
+
+  /// Kampanyalı ürünleri yükle (tüm sayfalardan indirimli olanlar)
+  Future<void> _loadCampaignProducts() async {
+    final products = await _productService.getAllCampaignProducts(
+      maxProducts: 10,
+    );
+    if (mounted) {
+      setState(() {
+        _isLoadingCampaignProducts = false;
+        _campaignProducts = products;
+      });
+    }
   }
 
   void _startBannerTimer() {
@@ -64,25 +97,31 @@ class _HomeContentState extends State<HomeContent> {
     super.dispose();
   }
 
-  void _navigateToProductDetail(BuildContext context) {
+  void _navigateToProductDetail(BuildContext context, {ProductModel? product}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ProductDetailPage(
-        
-        ),  
+          // product: product,
+        ),
       ),
     );
   }
 
-  Future<void> _handleAddToCart(BuildContext context, String productName) async {
-    if (!await AuthGuard.checkAuth(context, message: 'Sepete eklemek için giriş yapın')) {
+  Future<void> _handleAddToCart(
+    BuildContext context,
+    String productName,
+  ) async {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Sepete eklemek için giriş yapın',
+    )) {
       return;
     }
-    
+
     HapticFeedback.mediumImpact();
     if (!context.mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -101,13 +140,16 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   Future<void> _handleFavorite(BuildContext context, String productName) async {
-    if (!await AuthGuard.checkAuth(context, message: 'Favorilere eklemek için giriş yapın')) {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Favorilere eklemek için giriş yapın',
+    )) {
       return;
     }
-    
+
     HapticFeedback.lightImpact();
     if (!context.mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -144,7 +186,7 @@ class _HomeContentState extends State<HomeContent> {
               SizedBox(height: AppSpacing.md),
               _buildCampaignProducts(),
               SizedBox(height: AppSpacing.lg),
-              _buildNewProducts(),            
+              _buildNewProducts(),
             ],
           ),
         ),
@@ -152,7 +194,6 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
- 
   Widget _buildHeader() {
     return Container(
       padding: EdgeInsets.symmetric(
@@ -163,16 +204,16 @@ class _HomeContentState extends State<HomeContent> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Image.asset(
-            'assets/logo.png',
-            height: 35,
-            fit: BoxFit.contain,
-          ),
+          Image.asset('assets/logo.png', height: 35, fit: BoxFit.contain),
           Row(
             children: [
               _buildHeaderIcon(Icons.favorite_border, badge: false),
               SizedBox(width: AppSpacing.md),
-              _buildHeaderIcon(Icons.shopping_cart_outlined, badge: true, badgeCount: "0"),
+              _buildHeaderIcon(
+                Icons.shopping_cart_outlined,
+                badge: true,
+                badgeCount: "0",
+              ),
             ],
           ),
         ],
@@ -180,7 +221,11 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildHeaderIcon(IconData icon, {bool badge = false, String? badgeCount}) {
+  Widget _buildHeaderIcon(
+    IconData icon, {
+    bool badge = false,
+    String? badgeCount,
+  }) {
     return Stack(
       children: [
         Container(
@@ -232,12 +277,18 @@ class _HomeContentState extends State<HomeContent> {
           child: Row(
             children: [
               SizedBox(width: AppSpacing.md),
-              Icon(Icons.search, color: AppColors.textTertiary, size: AppSizes.iconSM),
+              Icon(
+                Icons.search,
+                color: AppColors.textTertiary,
+                size: AppSizes.iconSM,
+              ),
               SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   "Ürün, kategori veya marka ara...",
-                  style: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
             ],
@@ -282,7 +333,12 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildInfoBanner(IconData icon, String title, String subtitle, Color color) {
+  Widget _buildInfoBanner(
+    IconData icon,
+    String title,
+    String subtitle,
+    Color color,
+  ) {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -309,7 +365,9 @@ class _HomeContentState extends State<HomeContent> {
               ),
               Text(
                 subtitle,
-                style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -340,18 +398,9 @@ class _HomeContentState extends State<HomeContent> {
         'name': 'Organik Kozmetik',
         'image': 'assets/kategorileri/organikkozmatik.png',
       },
-      {
-        'name': 'Bebek Bakım',
-        'image': 'assets/kategorileri/bebekbakim.png',
-      },
-      {
-        'name': 'Ev & Yaşam',
-        'image': 'assets/kategorileri/evyasam.png',
-      },
-      {
-        'name': 'Aromaterapi',
-        'image': 'assets/kategorileri/aromaterapi.png',
-      },
+      {'name': 'Bebek Bakım', 'image': 'assets/kategorileri/bebekbakim.png'},
+      {'name': 'Ev & Yaşam', 'image': 'assets/kategorileri/evyasam.png'},
+      {'name': 'Aromaterapi', 'image': 'assets/kategorileri/aromaterapi.png'},
       {
         'name': 'Cilt & Vücut',
         'image': 'assets/kategorileri/ciltvevucuturunleri.png',
@@ -360,10 +409,7 @@ class _HomeContentState extends State<HomeContent> {
         'name': 'Saç Bakım',
         'image': 'assets/kategorileri/sacbakimurunleri.png',
       },
-      {
-        'name': 'Kitaplar',
-        'image': 'assets/kategorileri/kitaplar.png',
-      },
+      {'name': 'Kitaplar', 'image': 'assets/kategorileri/kitaplar.png'},
       {
         'name': 'Son Çağrı',
         'image': 'assets/kategorileri/soncagriurunleri.png',
@@ -434,11 +480,8 @@ class _HomeContentState extends State<HomeContent> {
               child: Image.asset(
                 imagePath,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.category,
-                  color: AppColors.primary,
-                  size: 28,
-                ),
+                errorBuilder: (context, error, stackTrace) =>
+                    Icon(Icons.category, color: AppColors.primary, size: 28),
               ),
             ),
           ),
@@ -574,20 +617,40 @@ class _HomeContentState extends State<HomeContent> {
                         color: AppColors.error,
                         borderRadius: AppRadius.borderRadiusXS,
                       ),
-                      child: Text("KAMPANYALI ÜRÜNLER", style: AppTypography.discountBadge),
+                      child: Text(
+                        "KAMPANYALI ÜRÜNLER",
+                        style: AppTypography.discountBadge,
+                      ),
                     ),
                     SizedBox(width: AppSpacing.sm),
                     const Text("🔥", style: TextStyle(fontSize: 16)),
                   ],
                 ),
-                Row(
-                  children: [
-                    Text(
-                      "Tümünü Gör",
-                      style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
-                    ),
-                    Icon(Icons.chevron_right, color: AppColors.primary, size: AppSizes.iconSM),
-                  ],
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AllProductsPage.campaignProducts(),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        "Tümünü Gör",
+                        style: AppTypography.labelMedium.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: AppColors.primary,
+                        size: AppSizes.iconSM,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -595,64 +658,47 @@ class _HomeContentState extends State<HomeContent> {
           SizedBox(height: AppSpacing.xs),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Text("25-30 Kasım Kampanyası!", style: AppTypography.bodySmall),
+            child: Text(
+              "İndirimli ürünleri kaçırmayın!",
+              style: AppTypography.bodySmall,
+            ),
           ),
           SizedBox(height: AppSpacing.md),
-          ProductCardList(
-            products: [
-              ProductCard(
-                title: "Pro-Allium Soğan Sebze Suyu",
-                weight: "60ml x 5 adet",
-                price: 440.00,
-                oldPrice: 550.00,
-                imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400",
-                rating: 4.4,
-                reviewCount: 259,
-                badgeText: "KAMPANYA",
-                badgeColor: const Color(0xFF7B2CBF),
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Pro-Allium Soğan Sebze Suyu"),
-                onFavorite: () => _handleFavorite(context, "Pro-Allium Soğan Sebze Suyu"),
-              ),
-              ProductCard(
-                title: "Ihlamur Çayı Doğal",
-                weight: "100g",
-                price: 89.90,
-                oldPrice: 129.90,
-                imageUrl: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400",
-                rating: 4.6,
-                reviewCount: 182,
-                badgeText: "KAMPANYA",
-                badgeColor: const Color(0xFF7B2CBF),
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Ihlamur Çayı Doğal"),
-                onFavorite: () => _handleFavorite(context, "Ihlamur Çayı Doğal"),
-              ),
-              ProductCard(
-                title: "Lavanta Yağı Saf",
-                weight: "50ml",
-                price: 54.90,
-                oldPrice: 74.90,
-                imageUrl: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=400",
-                rating: 4.8,
-                reviewCount: 95,
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Lavanta Yağı Saf"),
-                onFavorite: () => _handleFavorite(context, "Lavanta Yağı Saf"),
-              ),
-              ProductCard(
-                title: "Ham Bal Organik",
-                weight: "450g",
-                price: 129.90,
-                imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400",
-                rating: 4.9,
-                reviewCount: 312,
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Ham Bal Organik"),
-                onFavorite: () => _handleFavorite(context, "Ham Bal Organik"),
-              ),
-            ],
-          ),
+          if (_isLoadingCampaignProducts)
+            _buildProductsLoading()
+          else if (_campaignProducts.isEmpty)
+            _buildProductsEmpty("Kampanyalı ürün bulunamadı")
+          else
+            ProductCardList(
+              products: _campaignProducts
+                  .map(
+                    (product) => ProductCard(
+                      title: product.productName,
+                      weight: product.productExcerpt.isNotEmpty
+                          ? product.productExcerpt
+                          : "",
+                      price: product.priceAsDouble,
+                      oldPrice: product.hasDiscount
+                          ? product.discountPriceAsDouble
+                          : null,
+                      imageUrl: product.productImage,
+                      rating: product.ratingAsDouble,
+                      reviewCount: product.totalComments > 0
+                          ? product.totalComments
+                          : null,
+                      badgeText: product.hasDiscount ? "KAMPANYA" : null,
+                      badgeColor: const Color(0xFF7B2CBF),
+                      isFavorite: product.isFavorite,
+                      onTap: () =>
+                          _navigateToProductDetail(context, product: product),
+                      onAddToCart: () =>
+                          _handleAddToCart(context, product.productName),
+                      onFavorite: () =>
+                          _handleFavorite(context, product.productName),
+                    ),
+                  )
+                  .toList(),
+            ),
         ],
       ),
     );
@@ -681,20 +727,39 @@ class _HomeContentState extends State<HomeContent> {
                         color: AppColors.success,
                         borderRadius: AppRadius.borderRadiusXS,
                       ),
-                      child: Text("YENİ ÜRÜNLER", style: AppTypography.discountBadge),
+                      child: Text(
+                        "YENİ ÜRÜNLER",
+                        style: AppTypography.discountBadge,
+                      ),
                     ),
                     SizedBox(width: AppSpacing.sm),
                     const Text("✨", style: TextStyle(fontSize: 16)),
                   ],
                 ),
-                Row(
-                  children: [
-                    Text(
-                      "Tümünü Gör",
-                      style: AppTypography.labelMedium.copyWith(color: AppColors.primary),
-                    ),
-                    Icon(Icons.chevron_right, color: AppColors.primary, size: AppSizes.iconSM),
-                  ],
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AllProductsPage.newProducts(),
+                      ),
+                    );
+                  },
+                  child: Row(
+                    children: [
+                      Text(
+                        "Tümünü Gör",
+                        style: AppTypography.labelMedium.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right,
+                        color: AppColors.primary,
+                        size: AppSizes.iconSM,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -702,66 +767,82 @@ class _HomeContentState extends State<HomeContent> {
           SizedBox(height: AppSpacing.xs),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            child: Text("En son eklenen ürünlerimiz", style: AppTypography.bodySmall),
+            child: Text(
+              "En son eklenen ürünlerimiz",
+              style: AppTypography.bodySmall,
+            ),
           ),
           SizedBox(height: AppSpacing.md),
-          ProductCardList(
-            products: [
-              ProductCard(
-                title: "Organik Zeytinyağı Natürel Sızma",
-                weight: "500ml",
-                price: 189.90,
-                imageUrl: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400",
-                rating: 4.7,
-                reviewCount: 128,
-                badgeText: "YENİ",
-                badgeColor: const Color(0xFF4CAF50),
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Organik Zeytinyağı Natürel Sızma"),
-                onFavorite: () => _handleFavorite(context, "Organik Zeytinyağı Natürel Sızma"),
-              ),
-              ProductCard(
-                title: "Kekik Suyu Saf",
-                weight: "250ml",
-                price: 45.90,
-                imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=400",
-                rating: 4.5,
-                reviewCount: 76,
-                badgeText: "YENİ",
-                badgeColor: const Color(0xFF4CAF50),
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Kekik Suyu Saf"),
-                onFavorite: () => _handleFavorite(context, "Kekik Suyu Saf"),
-              ),
-              ProductCard(
-                title: "Arı Poleni Doğal",
-                weight: "100g",
-                price: 159.90,
-                imageUrl: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=400",
-                rating: 4.8,
-                reviewCount: 203,
-                badgeText: "YENİ",
-                badgeColor: const Color(0xFF4CAF50),
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Arı Poleni Doğal"),
-                onFavorite: () => _handleFavorite(context, "Arı Poleni Doğal"),
-              ),
-              ProductCard(
-                title: "Defne Yağı Organik",
-                weight: "50ml",
-                price: 79.90,
-                imageUrl: "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=400",
-                rating: 4.6,
-                reviewCount: 89,
-                badgeText: "YENİ",
-                badgeColor: const Color(0xFF4CAF50),
-                onTap: () => _navigateToProductDetail(context),
-                onAddToCart: () => _handleAddToCart(context, "Defne Yağı Organik"),
-                onFavorite: () => _handleFavorite(context, "Defne Yağı Organik"),
-              ),
-            ],
-          ),
+          if (_isLoadingNewProducts)
+            _buildProductsLoading()
+          else if (_newProducts.isEmpty)
+            _buildProductsEmpty("Yeni ürün bulunamadı")
+          else
+            ProductCardList(
+              products: _newProducts
+                  .map(
+                    (product) => ProductCard(
+                      title: product.productName,
+                      weight: product.productExcerpt.isNotEmpty
+                          ? product.productExcerpt
+                          : "",
+                      price: product.priceAsDouble,
+                      oldPrice: product.hasDiscount
+                          ? product.discountPriceAsDouble
+                          : null,
+                      imageUrl: product.productImage,
+                      rating: product.ratingAsDouble,
+                      reviewCount: product.totalComments > 0
+                          ? product.totalComments
+                          : null,
+                      badgeText: "YENİ",
+                      badgeColor: const Color(0xFF4CAF50),
+                      isFavorite: product.isFavorite,
+                      onTap: () =>
+                          _navigateToProductDetail(context, product: product),
+                      onAddToCart: () =>
+                          _handleAddToCart(context, product.productName),
+                      onFavorite: () =>
+                          _handleFavorite(context, product.productName),
+                    ),
+                  )
+                  .toList(),
+            ),
         ],
+      ),
+    );
+  }
+
+  /// Loading widget for products
+  Widget _buildProductsLoading() {
+    return SizedBox(
+      height: 330,
+      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+    );
+  }
+
+  /// Empty widget for products
+  Widget _buildProductsEmpty(String message) {
+    return SizedBox(
+      height: 330,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 48,
+              color: AppColors.textTertiary,
+            ),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              message,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textTertiary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

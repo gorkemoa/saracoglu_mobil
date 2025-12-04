@@ -53,5 +53,7 @@ class ApiConstants {
   /// Mahalleler - kullanımı: '${ApiConstants.getNeighbourhoods}/$districtNo/neighbourhood'
   static const String getNeighbourhoods = 'service/general/general';
 
-
+  /// Product Endpoints
+  static const String getAllProducts = 'service/products/product/list/all';
+  static const String getSortList = 'service/products/product/list/sortList';
 }
