@@ -16,10 +16,10 @@ class HomeContent extends StatefulWidget {
   const HomeContent({super.key, this.onSearchTap});
 
   @override
-  State<HomeContent> createState() => _HomeContentState();
+  State<HomeContent> createState() => HomeContentState();
 }
 
-class _HomeContentState extends State<HomeContent> {
+class HomeContentState extends State<HomeContent> {
   int _currentBannerIndex = 0;
   final PageController _bannerController = PageController();
   Timer? _bannerTimer;
@@ -47,6 +47,11 @@ class _HomeContentState extends State<HomeContent> {
   void initState() {
     super.initState();
     _startBannerTimer();
+    _loadProducts();
+  }
+
+  /// Sayfayı yenile - MainScreen'den çağrılır
+  void refresh() {
     _loadProducts();
   }
 

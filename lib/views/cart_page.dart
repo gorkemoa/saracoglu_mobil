@@ -39,49 +39,46 @@ class CartPage extends StatefulWidget {
   const CartPage({super.key});
 
   @override
-  State<CartPage> createState() => _CartPageState();
+  State<CartPage> createState() => CartPageState();
 }
 
-class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
+class CartPageState extends State<CartPage> with TickerProviderStateMixin {
   // Demo adresler - gerçek uygulamada API'den gelecek
   final List<DeliveryAddress> _addresses = [
-
-  DeliveryAddress(
-    id: '1',
-    title: 'Ev',
-    fullAddress: 'Mansuroğlu Mah. 286/5 Sok. No: 14 Daire: 7',
-    city: 'İzmir',
-    district: 'Bayraklı',
-    phone: '05XX XXX XX XX',
-    isDefault: true,
-  ),
-  DeliveryAddress(
-    id: '2',
-    title: 'Ofis',
-    fullAddress: 'Cumhuriyet Bulvarı No: 110 Kat: 4 Office701',
-    city: 'İzmir',
-    district: 'Konak',
-    phone: '05XX XXX XX XX',
-  ),
-  DeliveryAddress(
-    id: '3',
-    title: 'Aile Evi',
-    fullAddress: 'Bağbaşı Mah. 1203 Sok. No: 22',
-    city: 'Denizli',
-    district: 'Merkezefendi',
-    phone: '05XX XXX XX XX',
-  ),
-  DeliveryAddress(
-    id: '4',
-    title: 'Yazlık',
-    fullAddress: 'Bitez Mah. 2040 Sok. No: 8 Villa',
-    city: 'Muğla',
-    district: 'Bodrum',
-    phone: '05XX XXX XX XX',
-  ),
-];
-
-
+    DeliveryAddress(
+      id: '1',
+      title: 'Ev',
+      fullAddress: 'Mansuroğlu Mah. 286/5 Sok. No: 14 Daire: 7',
+      city: 'İzmir',
+      district: 'Bayraklı',
+      phone: '05XX XXX XX XX',
+      isDefault: true,
+    ),
+    DeliveryAddress(
+      id: '2',
+      title: 'Ofis',
+      fullAddress: 'Cumhuriyet Bulvarı No: 110 Kat: 4 Office701',
+      city: 'İzmir',
+      district: 'Konak',
+      phone: '05XX XXX XX XX',
+    ),
+    DeliveryAddress(
+      id: '3',
+      title: 'Aile Evi',
+      fullAddress: 'Bağbaşı Mah. 1203 Sok. No: 22',
+      city: 'Denizli',
+      district: 'Merkezefendi',
+      phone: '05XX XXX XX XX',
+    ),
+    DeliveryAddress(
+      id: '4',
+      title: 'Yazlık',
+      fullAddress: 'Bitez Mah. 2040 Sok. No: 8 Villa',
+      city: 'Muğla',
+      district: 'Bodrum',
+      phone: '05XX XXX XX XX',
+    ),
+  ];
 
   DeliveryAddress? _selectedAddress;
 
@@ -167,6 +164,12 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
+  /// Sayfayı yenile - MainScreen'den çağrılır
+  void refresh() {
+    // TODO: Sepet API entegrasyonu yapıldığında burası güncellenecek
+    setState(() {});
+  }
+
   @override
   void dispose() {
     _slideController.dispose();
@@ -175,16 +178,20 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
   }
 
   double get _subtotal {
-    return _cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+    return _cartItems.fold(
+      0,
+      (sum, item) => sum + (item.price * item.quantity),
+    );
   }
 
   double get _totalSavings {
     return _cartItems.fold(0.0, (sum, item) {
-      if (item.oldPrice != null) {
-        return sum + ((item.oldPrice! - item.price) * item.quantity);
-      }
-      return sum;
-    }) + _couponDiscount;
+          if (item.oldPrice != null) {
+            return sum + ((item.oldPrice! - item.price) * item.quantity);
+          }
+          return sum;
+        }) +
+        _couponDiscount;
   }
 
   double get _shippingCost {
@@ -243,7 +250,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
         padding: EdgeInsets.all(AppSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -272,14 +281,13 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ),
               ),
               SizedBox(height: AppSpacing.lg),
-              Text(
-                'Ürünü Kaldır',
-                style: AppTypography.h4,
-              ),
+              Text('Ürünü Kaldır', style: AppTypography.h4),
               SizedBox(height: AppSpacing.sm),
               Text(
                 '${item.title} ürününü sepetinizden kaldırmak istediğinize emin misiniz?',
-                style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: AppSpacing.xl),
@@ -297,7 +305,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       ),
                       child: Text(
                         'Vazgeç',
-                        style: AppTypography.buttonMedium.copyWith(color: AppColors.textPrimary),
+                        style: AppTypography.buttonMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ),
@@ -315,10 +325,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                           borderRadius: AppRadius.borderRadiusSM,
                         ),
                       ),
-                      child: Text(
-                        'Kaldır',
-                        style: AppTypography.buttonMedium,
-                      ),
+                      child: Text('Kaldır', style: AppTypography.buttonMedium),
                     ),
                   ),
                 ],
@@ -338,7 +345,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
         padding: EdgeInsets.all(AppSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -367,14 +376,13 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ),
               ),
               SizedBox(height: AppSpacing.lg),
-              Text(
-                'Sepeti Temizle',
-                style: AppTypography.h4,
-              ),
+              Text('Sepeti Temizle', style: AppTypography.h4),
               SizedBox(height: AppSpacing.sm),
               Text(
                 'Sepetinizdeki tüm ürünler kaldırılacak. Devam etmek istiyor musunuz?',
-                style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: AppSpacing.xl),
@@ -392,7 +400,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       ),
                       child: Text(
                         'Vazgeç',
-                        style: AppTypography.buttonMedium.copyWith(color: AppColors.textPrimary),
+                        style: AppTypography.buttonMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ),
@@ -415,10 +425,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                           borderRadius: AppRadius.borderRadiusSM,
                         ),
                       ),
-                      child: Text(
-                        'Temizle',
-                        style: AppTypography.buttonMedium,
-                      ),
+                      child: Text('Temizle', style: AppTypography.buttonMedium),
                     ),
                   ),
                 ],
@@ -432,21 +439,21 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   void _applyCoupon() async {
     if (_couponController.text.isEmpty) return;
-    
+
     setState(() => _isApplyingCoupon = true);
-    
+
     // Simüle edilmiş API çağrısı
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     // Demo kupon kodları
     final coupons = {
       'HOSGELDIN': 50.0,
       'INDIRIM10': _subtotal * 0.10,
       'SARACOGLU': 100.0,
     };
-    
+
     final code = _couponController.text.toUpperCase();
-    
+
     setState(() {
       _isApplyingCoupon = false;
       if (coupons.containsKey(code)) {
@@ -466,7 +473,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.all(AppSpacing.md),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
           ),
         );
       } else {
@@ -483,7 +492,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.all(AppSpacing.md),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
           ),
         );
       }
@@ -502,13 +513,15 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final authService = AuthService();
-    
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: !authService.isLoggedIn 
-        ? _buildLoginRequiredState() 
-        : (_cartItems.isEmpty ? _buildEmptyState() : _buildCartContent()),
-      bottomNavigationBar: (authService.isLoggedIn && _cartItems.isNotEmpty) ? _buildCheckoutBar() : null,
+      body: !authService.isLoggedIn
+          ? _buildLoginRequiredState()
+          : (_cartItems.isEmpty ? _buildEmptyState() : _buildCartContent()),
+      bottomNavigationBar: (authService.isLoggedIn && _cartItems.isNotEmpty)
+          ? _buildCheckoutBar()
+          : null,
     );
   }
 
@@ -525,10 +538,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.elasticOut,
                 builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: child,
-                  );
+                  return Transform.scale(scale: value, child: child);
                 },
                 child: Container(
                   width: 120,
@@ -572,7 +582,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginPage(),
+                      ),
                     ).then((_) {
                       setState(() {}); // Sayfayı yenile
                     });
@@ -594,9 +606,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const LoginPage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
                   ).then((_) {
                     setState(() {});
                   });
@@ -615,8 +625,6 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
-
-
   Widget _buildEmptyState() {
     return SafeArea(
       child: Center(
@@ -631,10 +639,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.elasticOut,
                 builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: child,
-                  );
+                  return Transform.scale(scale: value, child: child);
                 },
                 child: Container(
                   width: 140,
@@ -679,10 +684,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ),
               ),
               SizedBox(height: AppSpacing.xxl),
-              Text(
-                'Sepetiniz Boş',
-                style: AppTypography.h3,
-              ),
+              Text('Sepetiniz Boş', style: AppTypography.h3),
               SizedBox(height: AppSpacing.sm),
               Text(
                 'Doğal ve sağlıklı ürünlerimizi keşfedin,\nsepetinize ekleyin.',
@@ -717,7 +719,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               // Önerilen kategoriler
               Text(
                 'Popüler Kategoriler',
-                style: AppTypography.labelMedium.copyWith(color: AppColors.textTertiary),
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
               SizedBox(height: AppSpacing.md),
               Row(
@@ -742,7 +746,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
       onTap: () {},
       borderRadius: AppRadius.borderRadiusRound,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: AppRadius.borderRadiusRound,
@@ -778,7 +785,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               ),
               Text(
                 '$_totalItems ürün',
-                style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -786,56 +795,46 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           actions: [
             IconButton(
               onPressed: _clearCart,
-              icon: Icon(Icons.delete_sweep_outlined, color: AppColors.error, size: 22),
+              icon: Icon(
+                Icons.delete_sweep_outlined,
+                color: AppColors.error,
+                size: 22,
+              ),
               tooltip: 'Sepeti Temizle',
             ),
           ],
         ),
 
- // Teslimat Adresi
-        SliverToBoxAdapter(
-          child: _buildAddressSection(),
-        ),
+        // Teslimat Adresi
+        SliverToBoxAdapter(child: _buildAddressSection()),
 
         // Kargo Progress Bar
-        SliverToBoxAdapter(
-          child: _buildShippingProgress(),
-        ),
+        SliverToBoxAdapter(child: _buildShippingProgress()),
 
-       
         // Ürün Listesi
         SliverPadding(
           padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                return Column(
-                  children: [
-                    _buildCartItemCard(_cartItems[index], index),
-                    if (index < _cartItems.length - 1)
-                      SizedBox(height: AppSpacing.sm),
-                  ],
-                );
-              },
-              childCount: _cartItems.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              return Column(
+                children: [
+                  _buildCartItemCard(_cartItems[index], index),
+                  if (index < _cartItems.length - 1)
+                    SizedBox(height: AppSpacing.sm),
+                ],
+              );
+            }, childCount: _cartItems.length),
           ),
         ),
 
         // Kupon Kodu Bölümü
-        SliverToBoxAdapter(
-          child: _buildCouponSection(),
-        ),
+        SliverToBoxAdapter(child: _buildCouponSection()),
 
         // Sipariş Özeti
-        SliverToBoxAdapter(
-          child: _buildOrderSummary(),
-        ),
+        SliverToBoxAdapter(child: _buildOrderSummary()),
 
         // Alt boşluk
-        SliverToBoxAdapter(
-          child: SizedBox(height: 120),
-        ),
+        SliverToBoxAdapter(child: SizedBox(height: 120)),
       ],
     );
   }
@@ -845,10 +844,16 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
     final remaining = 1000 - _subtotal;
 
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
-        color: remaining <= 0 
+        color: remaining <= 0
             ? AppColors.success.withOpacity(0.08)
             : AppColors.primary.withOpacity(0.08),
         borderRadius: AppRadius.borderRadiusSM,
@@ -899,7 +904,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   Widget _buildAddressSection() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -912,18 +920,29 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           // Başlık
           Row(
             children: [
-              Icon(Icons.location_on_outlined, color: AppColors.primary, size: 18),
+              Icon(
+                Icons.location_on_outlined,
+                color: AppColors.primary,
+                size: 18,
+              ),
               SizedBox(width: AppSpacing.xs),
               Text(
                 'Teslimat Adresi',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               Spacer(),
               InkWell(
                 onTap: _showAddressBottomSheet,
                 borderRadius: AppRadius.borderRadiusXS,
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.1),
                     borderRadius: AppRadius.borderRadiusXS,
@@ -931,11 +950,19 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.swap_horiz, color: AppColors.primary, size: 14),
+                      Icon(
+                        Icons.swap_horiz,
+                        color: AppColors.primary,
+                        size: 14,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         'Değiştir',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ],
                   ),
@@ -944,7 +971,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
             ],
           ),
           SizedBox(height: AppSpacing.sm),
-          
+
           // Seçili Adres
           if (_selectedAddress != null)
             _buildSelectedAddressCard(_selectedAddress!)
@@ -999,14 +1026,21 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                     if (address.isDefault) ...[
                       SizedBox(width: AppSpacing.xs),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.success.withOpacity(0.1),
                           borderRadius: AppRadius.borderRadiusXS,
                         ),
                         child: Text(
                           'Varsayılan',
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.success),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
                         ),
                       ),
                     ],
@@ -1015,7 +1049,11 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 SizedBox(height: 2),
                 Text(
                   address.fullAddress,
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1039,7 +1077,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
       onTap: _showAddNewAddressDialog,
       borderRadius: AppRadius.borderRadiusXS,
       child: Container(
-        padding: EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.sm),
+        padding: EdgeInsets.symmetric(
+          vertical: AppSpacing.md,
+          horizontal: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: AppColors.warning.withOpacity(0.08),
           borderRadius: AppRadius.borderRadiusXS,
@@ -1054,7 +1095,11 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 color: AppColors.warning.withOpacity(0.1),
                 borderRadius: AppRadius.borderRadiusXS,
               ),
-              child: Icon(Icons.add_location_alt_outlined, color: AppColors.warning, size: 18),
+              child: Icon(
+                Icons.add_location_alt_outlined,
+                color: AppColors.warning,
+                size: 18,
+              ),
             ),
             SizedBox(width: AppSpacing.sm),
             Expanded(
@@ -1063,12 +1108,19 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 children: [
                   Text(
                     'Adres Eklenmemiş',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warning),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warning,
+                    ),
                   ),
                   SizedBox(height: 2),
                   Text(
                     'Sipariş verebilmek için adres eklemelisiniz',
-                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -1084,11 +1136,15 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
     final lowerTitle = title.toLowerCase();
     if (lowerTitle.contains('ev') || lowerTitle.contains('home')) {
       return Icons.home_outlined;
-    } else if (lowerTitle.contains('iş') || lowerTitle.contains('work') || lowerTitle.contains('ofis')) {
+    } else if (lowerTitle.contains('iş') ||
+        lowerTitle.contains('work') ||
+        lowerTitle.contains('ofis')) {
       return Icons.business_outlined;
     } else if (lowerTitle.contains('yazlık') || lowerTitle.contains('villa')) {
       return Icons.villa_outlined;
-    } else if (lowerTitle.contains('aile') || lowerTitle.contains('anne') || lowerTitle.contains('baba')) {
+    } else if (lowerTitle.contains('aile') ||
+        lowerTitle.contains('anne') ||
+        lowerTitle.contains('baba')) {
       return Icons.family_restroom_outlined;
     }
     return Icons.location_on_outlined;
@@ -1106,7 +1162,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -1127,10 +1185,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 padding: EdgeInsets.all(AppSpacing.lg),
                 child: Row(
                   children: [
-                    Text(
-                      'Adreslerim',
-                      style: AppTypography.h4,
-                    ),
+                    Text('Adreslerim', style: AppTypography.h4),
                     Spacer(),
                     InkWell(
                       onTap: () {
@@ -1139,7 +1194,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       },
                       borderRadius: AppRadius.borderRadiusSM,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: AppSpacing.xs,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary.withOpacity(0.1),
                           borderRadius: AppRadius.borderRadiusSM,
@@ -1151,7 +1209,11 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                             SizedBox(width: 4),
                             Text(
                               'Yeni Ekle',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ],
                         ),
@@ -1169,7 +1231,8 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         shrinkWrap: true,
                         padding: EdgeInsets.all(AppSpacing.md),
                         itemCount: _addresses.length,
-                        separatorBuilder: (context, index) => SizedBox(height: AppSpacing.sm),
+                        separatorBuilder: (context, index) =>
+                            SizedBox(height: AppSpacing.sm),
                         itemBuilder: (context, index) {
                           final address = _addresses[index];
                           final isSelected = _selectedAddress?.id == address.id;
@@ -1197,17 +1260,20 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               color: AppColors.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.location_off_outlined, color: AppColors.primary, size: 40),
+            child: Icon(
+              Icons.location_off_outlined,
+              color: AppColors.primary,
+              size: 40,
+            ),
           ),
           SizedBox(height: AppSpacing.lg),
-          Text(
-            'Henüz adres eklenmemiş',
-            style: AppTypography.h5,
-          ),
+          Text('Henüz adres eklenmemiş', style: AppTypography.h5),
           SizedBox(height: AppSpacing.xs),
           Text(
             'Siparişleriniz için adres ekleyin',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           SizedBox(height: AppSpacing.lg),
           ElevatedButton.icon(
@@ -1219,8 +1285,13 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
             label: Text('Adres Ekle'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.md),
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.md,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
             ),
           ),
         ],
@@ -1248,7 +1319,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             margin: EdgeInsets.all(AppSpacing.md),
-            shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
             duration: Duration(seconds: 2),
           ),
         );
@@ -1257,7 +1330,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
       child: Container(
         padding: EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.05) : AppColors.background,
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.05)
+              : AppColors.background,
           borderRadius: AppRadius.borderRadiusSM,
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -1274,7 +1349,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.textTertiary,
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.textTertiary,
                   width: 2,
                 ),
               ),
@@ -1297,7 +1374,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary.withOpacity(0.1) : AppColors.surface,
+                color: isSelected
+                    ? AppColors.primary.withOpacity(0.1)
+                    : AppColors.surface,
                 borderRadius: AppRadius.borderRadiusXS,
               ),
               child: Icon(
@@ -1319,20 +1398,29 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                         ),
                       ),
                       if (address.isDefault) ...[
                         SizedBox(width: AppSpacing.xs),
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.success.withOpacity(0.1),
                             borderRadius: AppRadius.borderRadiusXS,
                           ),
                           child: Text(
                             'Varsayılan',
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.success),
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success,
+                            ),
                           ),
                         ),
                       ],
@@ -1341,25 +1429,43 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   SizedBox(height: 4),
                   Text(
                     address.fullAddress,
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.place_outlined, size: 12, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.place_outlined,
+                        size: 12,
+                        color: AppColors.textTertiary,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         '${address.district}, ${address.city}',
-                        style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
+                        ),
                       ),
                       SizedBox(width: AppSpacing.md),
-                      Icon(Icons.phone_outlined, size: 12, color: AppColors.textTertiary),
+                      Icon(
+                        Icons.phone_outlined,
+                        size: 12,
+                        color: AppColors.textTertiary,
+                      ),
                       SizedBox(width: 4),
                       Text(
                         address.phone,
-                        style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
+                        ),
                       ),
                     ],
                   ),
@@ -1396,7 +1502,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               backgroundColor: AppColors.success,
               behavior: SnackBarBehavior.floating,
               margin: EdgeInsets.all(AppSpacing.md),
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
             ),
           );
         },
@@ -1449,12 +1557,14 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       ? Image.asset(
                           item.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildImagePlaceholder(),
                         )
                       : Image.network(
                           item.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildImagePlaceholder(),
                         ),
                 ),
               ),
@@ -1482,14 +1592,21 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         ),
                         if (item.discount != null)
                           Container(
-                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.error,
                               borderRadius: AppRadius.borderRadiusXS,
                             ),
                             child: Text(
                               '%${item.discount}',
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                       ],
@@ -1498,7 +1615,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                     // Gramaj
                     Text(
                       item.weight,
-                      style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textTertiary,
+                      ),
                     ),
                     SizedBox(height: AppSpacing.xs),
                     // Fiyat ve Miktar
@@ -1581,8 +1701,12 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           ),
           _buildQuantityButton(
             icon: Icons.add,
-            color: item.quantity >= 10 ? AppColors.textTertiary : AppColors.primary,
-            onTap: item.quantity >= 10 ? null : () => _updateQuantity(item, item.quantity + 1),
+            color: item.quantity >= 10
+                ? AppColors.textTertiary
+                : AppColors.primary,
+            onTap: item.quantity >= 10
+                ? null
+                : () => _updateQuantity(item, item.quantity + 1),
           ),
         ],
       ),
@@ -1608,7 +1732,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   Widget _buildCouponSection() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1621,20 +1748,31 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           // Başlık
           Row(
             children: [
-              Icon(Icons.local_offer_outlined, color: AppColors.accent, size: 16),
+              Icon(
+                Icons.local_offer_outlined,
+                color: AppColors.accent,
+                size: 16,
+              ),
               SizedBox(width: AppSpacing.xs),
               Text(
                 'Kupon Kodu',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
           SizedBox(height: AppSpacing.sm),
-          
+
           if (_appliedCoupon != null)
             // Uygulanan kupon
             Container(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.success.withOpacity(0.1),
                 borderRadius: AppRadius.borderRadiusXS,
@@ -1650,11 +1788,18 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       children: [
                         Text(
                           _appliedCoupon!,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
                         ),
                         Text(
                           '₺${_couponDiscount.toStringAsFixed(0)} indirim uygulandı',
-                          style: TextStyle(fontSize: 11, color: AppColors.success),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.success,
+                          ),
                         ),
                       ],
                     ),
@@ -1664,7 +1809,11 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                     borderRadius: AppRadius.borderRadiusXS,
                     child: Container(
                       padding: EdgeInsets.all(4),
-                      child: Icon(Icons.close, color: AppColors.textSecondary, size: 18),
+                      child: Icon(
+                        Icons.close,
+                        color: AppColors.textSecondary,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
@@ -1687,33 +1836,62 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         highlightColor: Colors.transparent,
                       ),
                       child: ExpansionTile(
-                        tilePadding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                        tilePadding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
                         childrenPadding: EdgeInsets.zero,
                         dense: true,
                         visualDensity: VisualDensity.compact,
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusXS),
-                        collapsedShape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusXS),
-                        leading: Icon(Icons.confirmation_number_outlined, color: AppColors.primary, size: 18),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.borderRadiusXS,
+                        ),
+                        collapsedShape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.borderRadiusXS,
+                        ),
+                        leading: Icon(
+                          Icons.confirmation_number_outlined,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                         title: Text(
                           'Kuponlarım (${_userCoupons.length})',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         children: _userCoupons.map((coupon) {
-                          final isDisabled = _subtotal < (coupon['minAmount'] as double);
+                          final isDisabled =
+                              _subtotal < (coupon['minAmount'] as double);
                           return InkWell(
-                            onTap: isDisabled ? null : () => _selectCoupon(coupon),
+                            onTap: isDisabled
+                                ? null
+                                : () => _selectCoupon(coupon),
                             child: Container(
-                              padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.sm,
+                                vertical: AppSpacing.sm,
+                              ),
                               decoration: BoxDecoration(
-                                border: Border(top: BorderSide(color: AppColors.border.withOpacity(0.5))),
+                                border: Border(
+                                  top: BorderSide(
+                                    color: AppColors.border.withOpacity(0.5),
+                                  ),
+                                ),
                               ),
                               child: Row(
                                 children: [
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isDisabled 
-                                          ? AppColors.textTertiary.withOpacity(0.1)
+                                      color: isDisabled
+                                          ? AppColors.textTertiary.withOpacity(
+                                              0.1,
+                                            )
                                           : AppColors.primary.withOpacity(0.1),
                                       borderRadius: AppRadius.borderRadiusXS,
                                     ),
@@ -1722,33 +1900,49 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
-                                        color: isDisabled ? AppColors.textTertiary : AppColors.primary,
+                                        color: isDisabled
+                                            ? AppColors.textTertiary
+                                            : AppColors.primary,
                                       ),
                                     ),
                                   ),
                                   SizedBox(width: AppSpacing.sm),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           coupon['description'] as String,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: isDisabled ? AppColors.textTertiary : AppColors.textPrimary,
+                                            color: isDisabled
+                                                ? AppColors.textTertiary
+                                                : AppColors.textPrimary,
                                           ),
                                         ),
                                         Text(
                                           'Min. ₺${(coupon['minAmount'] as double).toStringAsFixed(0)} sepet tutarı',
-                                          style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: AppColors.textTertiary,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
                                   if (!isDisabled)
-                                    Icon(Icons.add_circle_outline, color: AppColors.primary, size: 20)
+                                    Icon(
+                                      Icons.add_circle_outline,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    )
                                   else
-                                    Icon(Icons.block, color: AppColors.textTertiary, size: 18),
+                                    Icon(
+                                      Icons.block,
+                                      color: AppColors.textTertiary,
+                                      size: 18,
+                                    ),
                                 ],
                               ),
                             ),
@@ -1763,10 +1957,15 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                     children: [
                       Expanded(child: Divider(color: AppColors.border)),
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                        ),
                         child: Text(
                           'veya',
-                          style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textTertiary,
+                          ),
                         ),
                       ),
                       Expanded(child: Divider(color: AppColors.border)),
@@ -1774,7 +1973,7 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   ),
                   SizedBox(height: AppSpacing.sm),
                 ],
-                
+
                 // Manuel kupon girişi
                 if (_showManualCouponInput || _userCoupons.isEmpty)
                   Row(
@@ -1785,8 +1984,14 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                           style: TextStyle(fontSize: 13),
                           decoration: InputDecoration(
                             hintText: 'Kupon kodu girin',
-                            hintStyle: TextStyle(fontSize: 12, color: AppColors.textTertiary),
-                            contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 10),
+                            hintStyle: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textTertiary,
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.sm,
+                              vertical: 10,
+                            ),
                             isDense: true,
                             border: OutlineInputBorder(
                               borderRadius: AppRadius.borderRadiusXS,
@@ -1798,7 +2003,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: AppRadius.borderRadiusXS,
-                              borderSide: BorderSide(color: AppColors.primary, width: 1),
+                              borderSide: BorderSide(
+                                color: AppColors.primary,
+                                width: 1,
+                              ),
                             ),
                           ),
                           textCapitalization: TextCapitalization.characters,
@@ -1811,7 +2019,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           minimumSize: Size(70, 40),
-                          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: AppRadius.borderRadiusXS,
                           ),
@@ -1825,7 +2035,13 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                                   color: Colors.white,
                                 ),
                               )
-                            : Text('Uygula', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            : Text(
+                                'Uygula',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ],
                   )
@@ -1841,17 +2057,27 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                     child: Container(
                       padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
                       decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                        border: Border.all(
+                          color: AppColors.border,
+                          style: BorderStyle.solid,
+                        ),
                         borderRadius: AppRadius.borderRadiusXS,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.edit_outlined, color: AppColors.textSecondary, size: 16),
+                          Icon(
+                            Icons.edit_outlined,
+                            color: AppColors.textSecondary,
+                            size: 16,
+                          ),
                           SizedBox(width: AppSpacing.xs),
                           Text(
                             'Kupon kodunu elle gir',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -1867,20 +2093,20 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
   void _selectCoupon(Map<String, dynamic> coupon) async {
     HapticFeedback.lightImpact();
     setState(() => _isApplyingCoupon = true);
-    
+
     await Future.delayed(const Duration(milliseconds: 400));
-    
+
     final discountAmount = coupon['isPercentage'] as bool
         ? _subtotal * (coupon['discount'] as double) / 100
         : coupon['discount'] as double;
-    
+
     setState(() {
       _isApplyingCoupon = false;
       _appliedCoupon = coupon['code'] as String;
       _couponDiscount = discountAmount;
       _showManualCouponInput = false;
     });
-    
+
     HapticFeedback.heavyImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1901,7 +2127,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   Widget _buildOrderSummary() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -1915,7 +2144,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           SizedBox(height: AppSpacing.xs),
           _buildSummaryRow(
             'Kargo',
-            _shippingCost == 0 ? 'Ücretsiz' : '₺${_shippingCost.toStringAsFixed(2)}',
+            _shippingCost == 0
+                ? 'Ücretsiz'
+                : '₺${_shippingCost.toStringAsFixed(2)}',
             valueColor: _shippingCost == 0 ? AppColors.success : null,
           ),
           if (_couponDiscount > 0) ...[
@@ -1929,7 +2160,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           if (_totalSavings > 0) ...[
             SizedBox(height: AppSpacing.xs),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
               decoration: BoxDecoration(
                 color: AppColors.success.withOpacity(0.08),
                 borderRadius: AppRadius.borderRadiusXS,
@@ -1937,11 +2171,19 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.savings_outlined, color: AppColors.success, size: 14),
+                  Icon(
+                    Icons.savings_outlined,
+                    color: AppColors.success,
+                    size: 14,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     '₺${_totalSavings.toStringAsFixed(2)} tasarruf',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.success),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.success,
+                    ),
                   ),
                 ],
               ),
@@ -1954,7 +2196,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Toplam', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(
+                'Toplam',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
               Text(
                 '₺${_totalPrice.toStringAsFixed(2)}',
                 style: TextStyle(
@@ -1992,7 +2237,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   Widget _buildCheckoutBar() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.surface,
         boxShadow: [
@@ -2013,7 +2261,10 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
               children: [
                 Text(
                   'Toplam',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 Text(
                   '₺${_totalPrice.toStringAsFixed(2)}',
@@ -2038,7 +2289,9 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       backgroundColor: AppColors.primary,
                       behavior: SnackBarBehavior.floating,
                       margin: EdgeInsets.all(AppSpacing.md),
-                      shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppRadius.borderRadiusSM,
+                      ),
                     ),
                   );
                 },
@@ -2055,10 +2308,18 @@ class _CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   children: [
                     Text(
                       'Siparişi Tamamla',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                     SizedBox(width: AppSpacing.xs),
-                    Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.white),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ],
                 ),
               ),

@@ -14,10 +14,10 @@ class SearchPage extends StatefulWidget {
   const SearchPage({super.key, this.showBackButton = false});
 
   @override
-  State<SearchPage> createState() => _SearchPageState();
+  State<SearchPage> createState() => SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final ProductService _productService = ProductService();
@@ -67,6 +67,11 @@ class _SearchPageState extends State<SearchPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.requestFocus();
     });
+    _loadSpecialProducts();
+  }
+
+  /// Sayfayı yenile - MainScreen'den çağrılır
+  void refresh() {
     _loadSpecialProducts();
   }
 

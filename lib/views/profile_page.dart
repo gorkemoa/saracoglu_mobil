@@ -20,10 +20,10 @@ class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  State<ProfilePage> createState() => ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class ProfilePageState extends State<ProfilePage> {
   final AuthService _authService = AuthService();
   bool _isLoadingUser = false;
 
@@ -53,11 +53,16 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  /// Sayfayı yenile - MainScreen'den çağrılır
+  void refresh() {
+    _fetchUserIfNeeded();
+  }
+
   /// Kullanıcı bilgilerini getir (her zaman güncel bilgi için)
   Future<void> _fetchUserIfNeeded() async {
     // Yükleme devam ediyorsa çık
     if (_isLoadingUser) return;
-    
+
     if (_authService.isLoggedIn && _authService.currentUser != null) {
       await _fetchUser();
     }
@@ -175,7 +180,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (confirmed == true) {
       final response = await _authService.deleteUser();
-      
+
       if (mounted) {
         if (response.isSuccess) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -224,7 +229,10 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               CircularProgressIndicator(color: AppColors.primary),
               SizedBox(height: AppSpacing.md),
-              Text('Doğrulama kodu gönderiliyor...', style: AppTypography.bodyMedium),
+              Text(
+                'Doğrulama kodu gönderiliyor...',
+                style: AppTypography.bodyMedium,
+              ),
             ],
           ),
         ),
@@ -232,7 +240,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     // Kod gönder
-    final response = await _authService.sendVerificationCode(SendCodeType.email);
+    final response = await _authService.sendVerificationCode(
+      SendCodeType.email,
+    );
 
     // Loading kapat
     if (mounted) Navigator.pop(context);
@@ -271,9 +281,7 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
         ),
       );
     }
@@ -575,48 +583,60 @@ class _ProfilePageState extends State<ProfilePage> {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                 if (user?.isApproved != null) ...[
-            SizedBox(height: AppSpacing.sm),
-            GestureDetector(
-              onTap: user!.isApproved! ? null : () => _startEmailVerification(user),
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: user.isApproved! ? AppColors.success.withOpacity(0.1) : AppColors.warning.withOpacity(0.1),
-                  borderRadius: AppRadius.borderRadiusSM,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      user.isApproved! ? Icons.verified : Icons.warning_amber_rounded,
-                      size: 16,
-                      color: user.isApproved! ? AppColors.success : AppColors.warning,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      user.isApproved! ? 'E-posta Doğrulandı' : 'E-posta Doğrulanmadı',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: user.isApproved! ? AppColors.success : AppColors.warning,
-                        fontWeight: FontWeight.bold,
+                  if (user?.isApproved != null) ...[
+                    SizedBox(height: AppSpacing.sm),
+                    GestureDetector(
+                      onTap: user!.isApproved!
+                          ? null
+                          : () => _startEmailVerification(user),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.xs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: user.isApproved!
+                              ? AppColors.success.withOpacity(0.1)
+                              : AppColors.warning.withOpacity(0.1),
+                          borderRadius: AppRadius.borderRadiusSM,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              user.isApproved!
+                                  ? Icons.verified
+                                  : Icons.warning_amber_rounded,
+                              size: 16,
+                              color: user.isApproved!
+                                  ? AppColors.success
+                                  : AppColors.warning,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              user.isApproved!
+                                  ? 'E-posta Doğrulandı'
+                                  : 'E-posta Doğrulanmadı',
+                              style: AppTypography.labelSmall.copyWith(
+                                color: user.isApproved!
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (!user.isApproved!) ...[
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.touch_app,
+                                size: 14,
+                                color: AppColors.warning,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
-                    if (!user.isApproved!) ...[
-                      SizedBox(width: 4),
-                      Icon(
-                        Icons.touch_app,
-                        size: 14,
-                        color: AppColors.warning,
-                      ),
-                    ],
                   ],
-                ),
-              ),
-            ),
-          ],
                 ],
               ),
             ),

@@ -11,10 +11,10 @@ class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
 
   @override
-  State<FavoritesPage> createState() => _FavoritesPageState();
+  State<FavoritesPage> createState() => FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage>
+class FavoritesPageState extends State<FavoritesPage>
     with TickerProviderStateMixin {
   final FavoriteService _favoriteService = FavoriteService();
   final AuthService _authService = AuthService();
@@ -36,6 +36,15 @@ class _FavoritesPageState extends State<FavoritesPage>
 
     if (_authService.isLoggedIn) {
       _loadFavorites();
+    }
+  }
+
+  /// Sayfayı yenile - MainScreen'den çağrılır
+  void refresh() {
+    if (_authService.isLoggedIn) {
+      _loadFavorites();
+    } else {
+      setState(() {});
     }
   }
 
