@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
+import '../services/favorite_service.dart';
 import '../models/product/product_model.dart';
 import 'product_detail_page.dart';
 import 'all_products_page.dart';
@@ -25,6 +26,7 @@ class _HomeContentState extends State<HomeContent> {
 
   // Product service
   final ProductService _productService = ProductService();
+  final FavoriteService _favoriteService = FavoriteService();
 
   // Yeni ürünler state
   List<ProductModel> _newProducts = [];
@@ -97,13 +99,14 @@ class _HomeContentState extends State<HomeContent> {
     super.dispose();
   }
 
-  void _navigateToProductDetail(BuildContext context, {required ProductModel product}) {
+  void _navigateToProductDetail(
+    BuildContext context, {
+    required ProductModel product,
+  }) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductDetailPage(
-          productId: product.productID,
-        ),
+        builder: (context) => ProductDetailPage(productId: product.productID),
       ),
     );
   }
@@ -139,7 +142,10 @@ class _HomeContentState extends State<HomeContent> {
     );
   }
 
-  Future<void> _handleFavorite(BuildContext context, String productName) async {
+  Future<void> _handleFavorite(
+    BuildContext context,
+    ProductModel product,
+  ) async {
     if (!await AuthGuard.checkAuth(
       context,
       message: 'Favorilere eklemek için giriş yapın',
@@ -150,21 +156,51 @@ class _HomeContentState extends State<HomeContent> {
     HapticFeedback.lightImpact();
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.favorite, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text('$productName favorilere eklendi')),
-          ],
-        ),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
+    final response = await _favoriteService.toggleFavorite(
+      productId: product.productID,
     );
+
+    if (!context.mounted) return;
+
+    if (response != null && response.success) {
+      // Ürünün favori durumunu güncelle
+      setState(() {
+        // Yeni ürünlerde güncelle
+        final newIndex = _newProducts.indexWhere(
+          (p) => p.productID == product.productID,
+        );
+        if (newIndex != -1) {
+          _newProducts[newIndex] = _newProducts[newIndex].copyWith(
+            isFavorite: response.isFavorite,
+          );
+        }
+        // Kampanyalı ürünlerde güncelle
+        final campaignIndex = _campaignProducts.indexWhere(
+          (p) => p.productID == product.productID,
+        );
+        if (campaignIndex != -1) {
+          _campaignProducts[campaignIndex] = _campaignProducts[campaignIndex]
+              .copyWith(isFavorite: response.isFavorite);
+        }
+      });
+    } else {
+      // Hata durumunda mesaj göster
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Favori işlemi başarısız oldu')),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    }
   }
 
   @override
@@ -693,8 +729,7 @@ class _HomeContentState extends State<HomeContent> {
                           _navigateToProductDetail(context, product: product),
                       onAddToCart: () =>
                           _handleAddToCart(context, product.productName),
-                      onFavorite: () =>
-                          _handleFavorite(context, product.productName),
+                      onFavorite: () => _handleFavorite(context, product),
                     ),
                   )
                   .toList(),
@@ -802,8 +837,7 @@ class _HomeContentState extends State<HomeContent> {
                           _navigateToProductDetail(context, product: product),
                       onAddToCart: () =>
                           _handleAddToCart(context, product.productName),
-                      onFavorite: () =>
-                          _handleFavorite(context, product.productName),
+                      onFavorite: () => _handleFavorite(context, product),
                     ),
                   )
                   .toList(),

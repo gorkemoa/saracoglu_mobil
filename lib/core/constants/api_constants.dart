@@ -60,4 +60,8 @@ class ApiConstants {
   static const String getProduct = 'service/products/product/detail';
   /// GetProductComments - kullanımı: '${ApiConstants.getProductComments}/$productId'
   static const String getProductComments = 'service/products/product/comments';
+
+  /// Favorites Endpoints
+  static const String getUserFavorites = 'service/user/account/favorites/list';
+  static const String toggleFavorite = 'service/user/account/favorites/addDelete';
 }

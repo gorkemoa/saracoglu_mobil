@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
-import '../widgets/product_card.dart';
-import '../widgets/favorite_item_card.dart';
 import '../services/auth_service.dart';
+import '../services/favorite_service.dart';
+import '../models/favorite/favorite_model.dart';
 import 'auth/login_page.dart';
+import 'product_detail_page.dart';
 
 class FavoritesPage extends StatefulWidget {
   const FavoritesPage({super.key});
@@ -13,49 +14,14 @@ class FavoritesPage extends StatefulWidget {
   State<FavoritesPage> createState() => _FavoritesPageState();
 }
 
-class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateMixin {
-  // Favori ürünler listesi - gerçek uygulamada state management ile yönetilecek
-  final List<FavoriteItemData> _favorites = [
-    FavoriteItemData(
-      id: '1',
-      title: 'Aromaterapi Yağı',
-      weight: '50 ml',
-      price: 189.90,
-      oldPrice: 229.90,
-      imageUrl: 'assets/kategorileri/aromaterapi.png',
-      isAssetImage: true,
-      category: 'Aromaterapi',
-    ),
-    FavoriteItemData(
-      id: '2',
-      title: 'Doğal Bitkisel Çay',
-      weight: '100 gr',
-      price: 129.90,
-      imageUrl: 'assets/kategorileri/dogalbitkiler.png',
-      isAssetImage: true,
-      category: 'Bitkisel',
-    ),
-    FavoriteItemData(
-      id: '3',
-      title: 'Soğuk Sıkım Zeytinyağı',
-      weight: '500 ml',
-      price: 349.90,
-      oldPrice: 399.90,
-      imageUrl: 'assets/kategorileri/soguksikimyaglar.png',
-      isAssetImage: true,
-      category: 'Yağlar',
-    ),
-    FavoriteItemData(
-      id: '4',
-      title: 'Organik Kozmetik Krem',
-      weight: '30 ml',
-      price: 159.90,
-      oldPrice: 189.90,
-      imageUrl: 'assets/kategorileri/organikkozmatik.png',
-      isAssetImage: true,
-      category: 'Kozmetik',
-    ),
-  ];
+class _FavoritesPageState extends State<FavoritesPage>
+    with TickerProviderStateMixin {
+  final FavoriteService _favoriteService = FavoriteService();
+  final AuthService _authService = AuthService();
+
+  List<FavoriteProduct> _favorites = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
   late AnimationController _slideController;
 
@@ -67,6 +33,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       vsync: this,
     );
     _slideController.forward();
+
+    if (_authService.isLoggedIn) {
+      _loadFavorites();
+    }
   }
 
   @override
@@ -75,34 +45,82 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     super.dispose();
   }
 
-  int get _totalItems => _favorites.length;
-
-  void _removeItem(FavoriteItemData item) {
-    HapticFeedback.mediumImpact();
+  Future<void> _loadFavorites() async {
     setState(() {
-      _favorites.removeWhere((i) => i.id == item.id);
+      _isLoading = true;
+      _errorMessage = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item.title} favorilerden kaldırıldı'),
-        backgroundColor: AppColors.textPrimary,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-        action: SnackBarAction(
-          label: 'Geri Al',
-          textColor: AppColors.primary,
-          onPressed: () {
-            setState(() {
-              _favorites.add(item);
-            });
-          },
-        ),
-      ),
-    );
+
+    final response = await _favoriteService.getUserFavorites();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (response != null && response.success) {
+          _favorites = response.favoriteProducts;
+        } else {
+          _errorMessage = 'Favoriler yüklenemedi';
+        }
+      });
+    }
   }
 
-  void _showDeleteConfirmation(FavoriteItemData item) {
+  int get _totalItems => _favorites.length;
+
+  Future<void> _removeItem(FavoriteProduct item) async {
+    HapticFeedback.mediumImpact();
+
+    // Önce UI'dan kaldır (optimistic update)
+    final removedItem = item;
+    final removedIndex = _favorites.indexOf(item);
+    setState(() {
+      _favorites.removeWhere((i) => i.favoriteID == item.favoriteID);
+    });
+
+    // API çağrısı yap
+    final response = await _favoriteService.toggleFavorite(
+      productId: item.productID,
+    );
+
+    if (mounted) {
+      if (response != null && response.success && !response.isFavorite) {
+        // Başarıyla kaldırıldı
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppColors.textPrimary,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      } else {
+        // Hata oldu, geri ekle
+        setState(() {
+          if (removedIndex >= 0 && removedIndex <= _favorites.length) {
+            _favorites.insert(removedIndex, removedItem);
+          } else {
+            _favorites.add(removedItem);
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Favori kaldırma işlemi başarısız oldu'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmation(FavoriteProduct item) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -110,7 +128,9 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
         padding: EdgeInsets.all(AppSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -139,14 +159,13 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 ),
               ),
               SizedBox(height: AppSpacing.lg),
-              Text(
-                'Favoriden Kaldır',
-                style: AppTypography.h4,
-              ),
+              Text('Favoriden Kaldır', style: AppTypography.h4),
               SizedBox(height: AppSpacing.sm),
               Text(
-                '${item.title} ürününü favorilerinizden kaldırmak istediğinize emin misiniz?',
-                style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                '${item.productName} ürününü favorilerinizden kaldırmak istediğinize emin misiniz?',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: AppSpacing.xl),
@@ -164,16 +183,18 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                       ),
                       child: Text(
                         'Vazgeç',
-                        style: AppTypography.buttonMedium.copyWith(color: AppColors.textPrimary),
+                        style: AppTypography.buttonMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ),
                   SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(context);
-                        _removeItem(item);
+                        await _removeItem(item);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.error,
@@ -182,10 +203,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                           borderRadius: AppRadius.borderRadiusSM,
                         ),
                       ),
-                      child: Text(
-                        'Kaldır',
-                        style: AppTypography.buttonMedium,
-                      ),
+                      child: Text('Kaldır', style: AppTypography.buttonMedium),
                     ),
                   ),
                 ],
@@ -205,7 +223,9 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
         padding: EdgeInsets.all(AppSpacing.xl),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         child: SafeArea(
           child: Column(
@@ -234,14 +254,13 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 ),
               ),
               SizedBox(height: AppSpacing.lg),
-              Text(
-                'Favorileri Temizle',
-                style: AppTypography.h4,
-              ),
+              Text('Favorileri Temizle', style: AppTypography.h4),
               SizedBox(height: AppSpacing.sm),
               Text(
                 'Tüm favori ürünleriniz kaldırılacak. Devam etmek istiyor musunuz?',
-                style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: AppSpacing.xl),
@@ -259,7 +278,9 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                       ),
                       child: Text(
                         'Vazgeç',
-                        style: AppTypography.buttonMedium.copyWith(color: AppColors.textPrimary),
+                        style: AppTypography.buttonMedium.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                   ),
@@ -280,10 +301,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                           borderRadius: AppRadius.borderRadiusSM,
                         ),
                       ),
-                      child: Text(
-                        'Temizle',
-                        style: AppTypography.buttonMedium,
-                      ),
+                      child: Text('Temizle', style: AppTypography.buttonMedium),
                     ),
                   ),
                 ],
@@ -295,7 +313,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     );
   }
 
-  void _addToCart(FavoriteItemData item) {
+  void _addToCart(FavoriteProduct item) {
     HapticFeedback.heavyImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -303,9 +321,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
           children: [
             Icon(Icons.check_circle, color: Colors.white, size: 20),
             SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text('${item.title} sepete eklendi'),
-            ),
+            Expanded(child: Text('${item.productName} sepete eklendi')),
           ],
         ),
         backgroundColor: AppColors.success,
@@ -323,15 +339,78 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
     );
   }
 
+  void _navigateToProductDetail(FavoriteProduct item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetailPage(productId: item.productID),
+      ),
+    ).then((_) {
+      // Sayfaya geri dönünce yenile
+      if (_authService.isLoggedIn) {
+        _loadFavorites();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: !authService.isLoggedIn 
-        ? _buildLoginRequiredState() 
-        : (_favorites.isEmpty ? _buildEmptyState() : _buildFavoritesContent()),
+      body: !_authService.isLoggedIn
+          ? _buildLoginRequiredState()
+          : _isLoading
+          ? _buildLoadingState()
+          : _errorMessage != null
+          ? _buildErrorState()
+          : (_favorites.isEmpty
+                ? _buildEmptyState()
+                : _buildFavoritesContent()),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: AppSpacing.md),
+          Text(
+            'Favoriler yükleniyor...',
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, size: 64, color: AppColors.error),
+          SizedBox(height: AppSpacing.md),
+          Text(
+            _errorMessage ?? 'Bir hata oluştu',
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          SizedBox(height: AppSpacing.lg),
+          ElevatedButton(
+            onPressed: _loadFavorites,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Tekrar Dene'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -348,10 +427,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.elasticOut,
                 builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: child,
-                  );
+                  return Transform.scale(scale: value, child: child);
                 },
                 child: Container(
                   width: 120,
@@ -395,9 +471,14 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginPage(),
+                      ),
                     ).then((_) {
-                      setState(() {}); // Sayfayı yenile
+                      setState(() {});
+                      if (_authService.isLoggedIn) {
+                        _loadFavorites();
+                      }
                     });
                   },
                   icon: Icon(Icons.login_rounded),
@@ -417,11 +498,12 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const LoginPage(),
-                    ),
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
                   ).then((_) {
                     setState(() {});
+                    if (_authService.isLoggedIn) {
+                      _loadFavorites();
+                    }
                   });
                 },
                 child: Text(
@@ -452,10 +534,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 duration: const Duration(milliseconds: 600),
                 curve: Curves.elasticOut,
                 builder: (context, value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: child,
-                  );
+                  return Transform.scale(scale: value, child: child);
                 },
                 child: Container(
                   width: 140,
@@ -488,11 +567,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                             color: AppColors.textTertiary,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(
-                            Icons.add,
-                            size: 12,
-                            color: Colors.white,
-                          ),
+                          child: Icon(Icons.add, size: 12, color: Colors.white),
                         ),
                       ),
                     ],
@@ -500,10 +575,7 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 ),
               ),
               SizedBox(height: AppSpacing.xxl),
-              Text(
-                'Favorileriniz Boş',
-                style: AppTypography.h3,
-              ),
+              Text('Favorileriniz Boş', style: AppTypography.h3),
               SizedBox(height: AppSpacing.sm),
               Text(
                 'Beğendiğiniz ürünleri kalp ikonuna tıklayarak\nfavorilerinize ekleyebilirsiniz.',
@@ -538,7 +610,9 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
               // Popüler kategoriler
               Text(
                 'Popüler Kategoriler',
-                style: AppTypography.labelMedium.copyWith(color: AppColors.textTertiary),
+                style: AppTypography.labelMedium.copyWith(
+                  color: AppColors.textTertiary,
+                ),
               ),
               SizedBox(height: AppSpacing.md),
               Row(
@@ -563,7 +637,10 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
       onTap: () {},
       borderRadius: AppRadius.borderRadiusRound,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.sm,
+        ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: AppRadius.borderRadiusRound,
@@ -582,98 +659,304 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
   }
 
   Widget _buildFavoritesContent() {
-    return CustomScrollView(
-      slivers: [
-        // Custom AppBar
-        SliverAppBar(
-          backgroundColor: AppColors.surface,
-          pinned: true,
-          elevation: 0,
-          scrolledUnderElevation: 2,
-          expandedHeight: 60,
-          title: Column(
-            children: [
-              Text(
-                'Favorilerim',
-                style: AppTypography.h4.copyWith(color: AppColors.textPrimary),
-              ),
-              Text(
-                '$_totalItems ürün',
-                style: AppTypography.labelSmall.copyWith(color: AppColors.textSecondary),
-              ),
+    return RefreshIndicator(
+      onRefresh: _loadFavorites,
+      color: AppColors.primary,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // Custom AppBar
+          SliverAppBar(
+            backgroundColor: AppColors.surface,
+            pinned: true,
+            elevation: 0,
+            scrolledUnderElevation: 2,
+            expandedHeight: 60,
+            title: Column(
+              children: [
+                Text(
+                  'Favorilerim',
+                  style: AppTypography.h4.copyWith(
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  '$_totalItems ürün',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            centerTitle: true,
+            actions: [
+              if (_favorites.isNotEmpty)
+                IconButton(
+                  onPressed: _clearFavorites,
+                  icon: Icon(
+                    Icons.delete_sweep_outlined,
+                    color: AppColors.error,
+                    size: 22,
+                  ),
+                  tooltip: 'Favorileri Temizle',
+                ),
             ],
           ),
-          centerTitle: true,
-          actions: [
-            IconButton(
-              onPressed: _clearFavorites,
-              icon: Icon(Icons.delete_sweep_outlined, color: AppColors.error, size: 22),
-              tooltip: 'Favorileri Temizle',
-            ),
-          ],
-        ),
 
-        // Favori Bilgi Alanı
-        SliverToBoxAdapter(
-          child: _buildInfoSection(),
-        ),
+          // Favori Bilgi Alanı
+          SliverToBoxAdapter(child: _buildInfoSection()),
 
-        // Ürün Listesi
-        SliverPadding(
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
+          // Ürün Listesi
+          SliverPadding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
                 final item = _favorites[index];
                 return Column(
                   children: [
-                    FavoriteItemCard(
-                      item: item,
-                      onTap: () {
-                        // Ürün detay sayfasına yönlendir
-                      },
-                      onRemove: () => _showDeleteConfirmation(item),
-                      onAddToCart: () => _addToCart(item),
-                      onDismissed: () => _removeItem(item),
-                    ),
+                    _buildFavoriteItemCard(item),
                     if (index < _favorites.length - 1)
                       SizedBox(height: AppSpacing.sm),
                   ],
                 );
-              },
-              childCount: _favorites.length,
+              }, childCount: _favorites.length),
             ),
           ),
-        ),
 
-        // Önerilen Ürünler
-        SliverToBoxAdapter(
-          child: _buildSuggestionsSection(),
-        ),
+          // Alt boşluk
+          SliverToBoxAdapter(child: SizedBox(height: 40)),
+        ],
+      ),
+    );
+  }
 
-        // Alt boşluk
-        SliverToBoxAdapter(
-          child: SizedBox(height: 40),
+  Widget _buildFavoriteItemCard(FavoriteProduct item) {
+    return Dismissible(
+      key: Key(item.favoriteID.toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.only(right: AppSpacing.xl),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: AppRadius.borderRadiusMD,
         ),
-      ],
+        child: Icon(Icons.delete_outline, color: Colors.white, size: 28),
+      ),
+      confirmDismiss: (direction) async {
+        _showDeleteConfirmation(item);
+        return false;
+      },
+      child: GestureDetector(
+        onTap: () => _navigateToProductDetail(item),
+        child: Container(
+          padding: EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: AppRadius.borderRadiusMD,
+            boxShadow: AppShadows.shadowSM,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Ürün Görseli
+              ClipRRect(
+                borderRadius: AppRadius.borderRadiusSM,
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  color: AppColors.background,
+                  child: Image.network(
+                    item.productImage,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.primary,
+                        ),
+                      );
+                    },
+                    errorBuilder: (c, o, s) => Icon(
+                      Icons.image_not_supported_outlined,
+                      color: AppColors.textTertiary,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: AppSpacing.md),
+
+              // Ürün Bilgileri
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // İndirim badge
+                    if (item.hasDiscount)
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xs,
+                          vertical: 2,
+                        ),
+                        margin: EdgeInsets.only(bottom: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${item.productDiscountIcon}${item.productDiscount}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ),
+
+                    // Ürün adı
+                    Text(
+                      item.productName,
+                      style: AppTypography.labelMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    SizedBox(height: 4),
+
+                    // Rating
+                    if (item.ratingAsDouble != null)
+                      Row(
+                        children: [
+                          ...List.generate(
+                            5,
+                            (i) => Icon(
+                              Icons.star_rounded,
+                              size: 12,
+                              color: i < (item.ratingAsDouble?.round() ?? 0)
+                                  ? AppColors.accent
+                                  : AppColors.border,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '(${item.totalComments})',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.textTertiary,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                    SizedBox(height: 8),
+
+                    // Fiyat ve butonlar
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.productPrice,
+                              style: AppTypography.priceMain,
+                            ),
+                            if (item.hasDiscount)
+                              Text(
+                                item.productPriceDiscount,
+                                style: AppTypography.priceOld.copyWith(
+                                  fontSize: 11,
+                                ),
+                              ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            // Kaldır butonu
+                            IconButton(
+                              onPressed: () => _showDeleteConfirmation(item),
+                              icon: Icon(
+                                Icons.favorite,
+                                color: AppColors.error,
+                                size: 22,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            // Sepete ekle butonu
+                            GestureDetector(
+                              onTap: () => _addToCart(item),
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                  vertical: AppSpacing.sm,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: item.isInStock
+                                      ? AppColors.primary
+                                      : AppColors.textTertiary,
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.shopping_bag_outlined,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      item.isInStock ? 'Ekle' : 'Tükendi',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildInfoSection() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(
         color: AppColors.error.withOpacity(0.08),
         borderRadius: AppRadius.borderRadiusSM,
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.favorite,
-            color: AppColors.error,
-            size: 18,
-          ),
+          Icon(Icons.favorite, color: AppColors.error, size: 18),
           SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
@@ -684,118 +967,6 @@ class _FavoritesPageState extends State<FavoritesPage> with TickerProviderStateM
                 color: AppColors.error.withOpacity(0.8),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuggestionsSection() {
-    final suggestions = [
-      {
-        'title': 'Doğal Gıda ve İçecek',
-        'weight': '450 gr',
-        'price': 289.90,
-        'oldPrice': 349.90,
-        'image': 'assets/kategorileri/dogalgidaveicecekler.png',
-      },
-      {
-        'title': 'Cilt ve Vücut Bakım',
-        'weight': '100 ml',
-        'price': 249.90,
-        'image': 'assets/kategorileri/ciltvevucuturunleri.png',
-      },
-      {
-        'title': 'Saç Bakım Ürünü',
-        'weight': '200 ml',
-        'price': 179.90,
-        'oldPrice': 199.90,
-        'image': 'assets/kategorileri/sacbakimurunleri.png',
-      },
-      {
-        'title': 'Bebek Bakım Seti',
-        'weight': '150 ml',
-        'price': 129.90,
-        'image': 'assets/kategorileri/bebekbakim.png',
-      },
-    ];
-
-    return Container(
-      margin: EdgeInsets.only(top: AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: Row(
-              children: [
-                Icon(Icons.tips_and_updates_outlined, color: AppColors.accent, size: 18),
-                SizedBox(width: AppSpacing.xs),
-                Text(
-                  'Bunları da beğenebilirsiniz',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: AppSpacing.md),
-          ProductCardList(
-            height: 330,
-            products: suggestions.map((item) => ProductCard(
-              title: item['title'] as String,
-              weight: item['weight'] as String,
-              price: item['price'] as double,
-              oldPrice: item['oldPrice'] as double?,
-              imageUrl: item['image'] as String,
-              isAssetImage: true,
-              onTap: () {
-                // Ürün detay sayfasına yönlendir
-              },
-              onAddToCart: () {
-                HapticFeedback.heavyImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white, size: 20),
-                        SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text('${item['title']} sepete eklendi'),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: AppColors.success,
-                    behavior: SnackBarBehavior.floating,
-                    margin: EdgeInsets.all(AppSpacing.md),
-                    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-                  ),
-                );
-              },
-              onFavorite: () {
-                HapticFeedback.lightImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Row(
-                      children: [
-                        Icon(Icons.favorite, color: Colors.white, size: 20),
-                        SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text('${item['title']} favorilere eklendi'),
-                        ),
-                      ],
-                    ),
-                    backgroundColor: AppColors.error,
-                    behavior: SnackBarBehavior.floating,
-                    margin: EdgeInsets.all(AppSpacing.md),
-                    shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-                  ),
-                );
-              },
-            )).toList(),
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
 import '../services/product_service.dart';
 import '../services/auth_service.dart';
+import '../services/favorite_service.dart';
 import '../models/product/product_model.dart';
 import 'product_detail_page.dart';
 
@@ -20,6 +21,7 @@ class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final ProductService _productService = ProductService();
+  final FavoriteService _favoriteService = FavoriteService();
   final ScrollController _scrollController = ScrollController();
 
   // Arama sonuçları state
@@ -172,9 +174,7 @@ class _SearchPageState extends State<SearchPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ProductDetailPage(
-          productId: product.productID,
-        ),
+        builder: (context) => ProductDetailPage(productId: product.productID),
       ),
     );
   }
@@ -207,7 +207,10 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  Future<void> _handleFavorite(String productName) async {
+  Future<void> _handleFavorite(
+    ProductModel product, {
+    bool isSearchResult = true,
+  }) async {
     if (!await AuthGuard.checkAuth(
       context,
       message: 'Favorilere eklemek için giriş yapın',
@@ -218,21 +221,55 @@ class _SearchPageState extends State<SearchPage> {
     HapticFeedback.lightImpact();
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.favorite, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text('$productName favorilere eklendi')),
-          ],
-        ),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
+    final response = await _favoriteService.toggleFavorite(
+      productId: product.productID,
     );
+
+    if (!mounted) return;
+
+    if (response != null && response.success) {
+      setState(() {
+        if (isSearchResult) {
+          final index = _searchResults.indexWhere(
+            (p) => p.productID == product.productID,
+          );
+          if (index != -1) {
+            _searchResults[index] = _searchResults[index].copyWith(
+              isFavorite: response.isFavorite,
+            );
+          }
+        } else {
+          final index = _specialProducts.indexWhere(
+            (p) => p.productID == product.productID,
+          );
+          if (index != -1) {
+            _specialProducts[index] = _specialProducts[index].copyWith(
+              isFavorite: response.isFavorite,
+            );
+          }
+        }
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  response?.message ?? 'Favori işlemi başarısız oldu',
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    }
   }
 
   @override
@@ -465,7 +502,8 @@ class _SearchPageState extends State<SearchPage> {
                 isFavorite: product.isFavorite,
                 onTap: () => _navigateToProductDetail(product),
                 onAddToCart: () => _handleAddToCart(product.productName),
-                onFavorite: () => _handleFavorite(product.productName),
+                onFavorite: () =>
+                    _handleFavorite(product, isSearchResult: true),
               );
             },
           ),
@@ -547,7 +585,7 @@ class _SearchPageState extends State<SearchPage> {
               isFavorite: product.isFavorite,
               onTap: () => _navigateToProductDetail(product),
               onAddToCart: () => _handleAddToCart(product.productName),
-              onFavorite: () => _handleFavorite(product.productName),
+              onFavorite: () => _handleFavorite(product, isSearchResult: false),
             );
           }).toList(),
         ),

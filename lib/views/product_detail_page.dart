@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
+import '../services/favorite_service.dart';
 import '../models/product/product_model.dart';
 
 /// Ürün Detay Sayfası
@@ -23,6 +24,7 @@ class ProductDetailPage extends StatefulWidget {
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final ProductService _productService = ProductService();
+  final FavoriteService _favoriteService = FavoriteService();
   final ScrollController _scrollController = ScrollController();
 
   // State
@@ -31,6 +33,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   List<ProductComment> _comments = [];
   bool _isLoading = true;
   bool _isLoadingComments = false;
+  bool _isTogglingFavorite = false;
   String? _errorMessage;
   int _selectedImageIndex = 0;
   int _quantity = 1;
@@ -714,21 +717,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             ),
           ),
 
-          // Yorum Yaz Butonu
-          OutlinedButton.icon(
-            onPressed: _writeReview,
-            icon: const Icon(Icons.rate_review_outlined, size: 16),
-            label: const Text('Yorum Yaz'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
-              minimumSize: const Size(double.infinity, 40),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-
           const SizedBox(height: 14),
 
           // Yorumlar
@@ -1017,33 +1005,56 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       return;
     }
 
-    HapticFeedback.lightImpact();
-    setState(() => _isFavorite = !_isFavorite);
+    if (_isTogglingFavorite) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              _isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                _isFavorite
-                    ? '${_product!.productName} favorilere eklendi'
-                    : '${_product!.productName} favorilerden çıkarıldı',
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: _isFavorite ? AppColors.error : AppColors.textPrimary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
+    setState(() => _isTogglingFavorite = true);
+    HapticFeedback.lightImpact();
+
+    final response = await _favoriteService.toggleFavorite(
+      productId: widget.productId,
     );
+
+    if (mounted) {
+      setState(() => _isTogglingFavorite = false);
+
+      if (response != null && response.success) {
+        setState(() => _isFavorite = response.isFavorite);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(
+                  response.isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(child: Text(response.message)),
+              ],
+            ),
+            backgroundColor: response.isFavorite
+                ? AppColors.error
+                : AppColors.textPrimary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Favori işlemi başarısız oldu'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _addToCart() async {
@@ -1218,46 +1229,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  void _writeReview() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
-          ),
-        ),
-        padding: AppSpacing.paddingXL,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: AppRadius.borderRadiusRound,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Text("Yorum Yaz", style: AppTypography.h3),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              "Bu özellik yakında eklenecektir.",
-              style: AppTypography.bodyMedium,
-            ),
-          ],
         ),
       ),
     );
