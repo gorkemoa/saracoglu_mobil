@@ -170,3 +170,35 @@ class ToggleFavoriteResponse {
     );
   }
 }
+
+/// Favorileri temizle request modeli
+class ClearFavoritesRequest {
+  final String userToken;
+
+  ClearFavoritesRequest({required this.userToken});
+
+  Map<String, dynamic> toJson() {
+    return {'userToken': userToken};
+  }
+}
+
+/// Favorileri temizle response modeli
+class ClearFavoritesResponse {
+  final bool error;
+  final bool success;
+  final String message;
+
+  ClearFavoritesResponse({
+    required this.error,
+    required this.success,
+    required this.message,
+  });
+
+  factory ClearFavoritesResponse.fromJson(Map<String, dynamic> json) {
+    return ClearFavoritesResponse(
+      error: json['error'] ?? true,
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+    );
+  }
+}

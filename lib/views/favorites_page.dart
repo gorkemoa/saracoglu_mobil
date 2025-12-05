@@ -287,12 +287,9 @@ class _FavoritesPageState extends State<FavoritesPage>
                   SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(context);
-                        HapticFeedback.mediumImpact();
-                        setState(() {
-                          _favorites.clear();
-                        });
+                        await _performClearFavorites();
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.warning,
@@ -311,6 +308,52 @@ class _FavoritesPageState extends State<FavoritesPage>
         ),
       ),
     );
+  }
+
+  Future<void> _performClearFavorites() async {
+    HapticFeedback.mediumImpact();
+
+    // Optimistic update - UI'dan hemen kaldır
+    final backupFavorites = List<FavoriteProduct>.from(_favorites);
+    setState(() {
+      _favorites.clear();
+    });
+
+    // API çağrısı yap
+    final response = await _favoriteService.clearFavorites();
+
+    if (mounted) {
+      if (response != null && response.success) {
+        // Başarılı
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppColors.textPrimary,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      } else {
+        // Hata oldu, geri yükle
+        setState(() {
+          _favorites = backupFavorites;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Favoriler temizlenemedi'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _addToCart(FavoriteProduct item) {

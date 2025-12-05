@@ -93,4 +93,40 @@ class FavoriteService {
       return null;
     }
   }
+
+  /// Tüm favorileri temizle
+  Future<ClearFavoritesResponse?> clearFavorites() async {
+    try {
+      if (_userToken.isEmpty) {
+        _logger.w('⚠️ Favori temizleme için giriş yapılmalı');
+        return null;
+      }
+
+      final request = ClearFavoritesRequest(userToken: _userToken);
+
+      _logger.d('📤 Clear Favorites Request: ${request.toJson()}');
+
+      final result = await _networkService.delete(
+        ApiConstants.clearFavorites,
+        body: request.toJson(),
+      );
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = ClearFavoritesResponse.fromJson(result.data!);
+        if (response.success) {
+          _logger.i('✅ Tüm favoriler temizlendi: ${response.message}');
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ Favori temizleme başarısız: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ Favori temizleme hatası', error: e);
+      return null;
+    }
+  }
 }

@@ -64,4 +64,5 @@ class ApiConstants {
   /// Favorites Endpoints
   static const String getUserFavorites = 'service/user/account/favorites/list';
   static const String toggleFavorite = 'service/user/account/favorites/addDelete';
+  static const String clearFavorites = 'service/user/account/favorites/clear';
 }
