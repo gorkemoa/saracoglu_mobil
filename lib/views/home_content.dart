@@ -97,12 +97,12 @@ class _HomeContentState extends State<HomeContent> {
     super.dispose();
   }
 
-  void _navigateToProductDetail(BuildContext context, {ProductModel? product}) {
+  void _navigateToProductDetail(BuildContext context, {required ProductModel product}) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ProductDetailPage(
-          // product: product,
+          productId: product.productID,
         ),
       ),
     );

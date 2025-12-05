@@ -56,4 +56,8 @@ class ApiConstants {
   /// Product Endpoints
   static const String getAllProducts = 'service/products/product/list/all';
   static const String getSortList = 'service/products/product/list/sortList';
+  /// GetProduct - kullanımı: '${ApiConstants.getProduct}/$productId?userToken=xxx'
+  static const String getProduct = 'service/products/product/detail';
+  /// GetProductComments - kullanımı: '${ApiConstants.getProductComments}/$productId'
+  static const String getProductComments = 'service/products/product/comments';
 }

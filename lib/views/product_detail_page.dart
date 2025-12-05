@@ -3,118 +3,43 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
 import '../services/auth_service.dart';
-
-/// Ürün detay sayfası için veri modeli
-class ProductDetailData {
-  final String title;
-  final String? subtitle;
-  final double price;
-  final double? oldPrice;
-  final List<String> imageUrls;
-  final bool inStock;
-  final int reviewCount;
-  final double rating;
-  final String? description;
-  final String? usage;
-  final String? ingredients;
-  final String? warnings;
-
-  const ProductDetailData({
-    required this.title,
-    this.subtitle,
-    required this.price,
-    this.oldPrice,
-    required this.imageUrls,
-    this.inStock = true,
-    this.reviewCount = 0,
-    this.rating = 0.0,
-    this.description,
-    this.usage,
-    this.ingredients,
-    this.warnings,
-  });
-}
-
-/// Yorum veri modeli
-class ReviewData {
-  final String userName;
-  final String date;
-  final int rating;
-  final String comment;
-  final String? avatarInitials;
-
-  const ReviewData({
-    required this.userName,
-    required this.date,
-    required this.rating,
-    required this.comment,
-    this.avatarInitials,
-  });
-}
+import '../services/product_service.dart';
+import '../models/product/product_model.dart';
 
 /// Ürün Detay Sayfası
 class ProductDetailPage extends StatefulWidget {
-  final ProductDetailData? product;
+  final int productId;
+  final ProductModel? initialProduct;
 
-  const ProductDetailPage({super.key, this.product});
+  const ProductDetailPage({
+    super.key,
+    required this.productId,
+    this.initialProduct,
+  });
 
   @override
   State<ProductDetailPage> createState() => _ProductDetailPageState();
 }
 
 class _ProductDetailPageState extends State<ProductDetailPage> {
-  late final ProductDetailData product;
-  
+  final ProductService _productService = ProductService();
+  final ScrollController _scrollController = ScrollController();
+
+  // State
+  ProductDetailModel? _product;
+  List<ProductModel> _similarProducts = [];
+  List<ProductComment> _comments = [];
+  bool _isLoading = true;
+  bool _isLoadingComments = false;
+  String? _errorMessage;
   int _selectedImageIndex = 0;
   int _quantity = 1;
   bool _isFavorite = false;
-  final ScrollController _scrollController = ScrollController();
-
-  // Örnek benzer ürünler
-  final List<Map<String, dynamic>> _relatedProducts = [
-    {'title': 'Lavanta Yağı', 'price': 185.0, 'image': 'assets/kategorileri/aromaterapi.png'},
-    {'title': 'Organik Çay', 'price': 120.0, 'image': 'assets/kategorileri/dogalgidaveicecekler.png'},
-    {'title': 'Bitki Serumu', 'price': 250.0, 'image': 'assets/kategorileri/ciltvevucuturunleri.png'},
-  ];
-
-  // Örnek yorumlar
-  final List<ReviewData> _reviews = const [
-    ReviewData(
-      userName: "Ayşe Yılmaz",
-      date: "15 Kasım 2023",
-      rating: 5,
-      comment: "Ürünü düzenli kullanıyorum, etkisini kısa sürede hissettim. Paketleme çok özenliydi, teşekkürler Saraçoğlu ailesi.",
-      avatarInitials: "AY",
-    ),
-    ReviewData(
-      userName: "Mehmet Kaya",
-      date: "10 Kasım 2023",
-      rating: 4,
-      comment: "Kaliteli ürün, tavsiye ederim. Kargo da hızlıydı.",
-      avatarInitials: "MK",
-    ),
-  ];
 
   @override
   void initState() {
     super.initState();
-    product = widget.product ?? const ProductDetailData(
-      title: "Brokoli Kürü",
-      subtitle: "Brassica Oleracea",
-      price: 450.0,
-      oldPrice: 520.0,
-      imageUrls: [
-        'assets/kategorileri/dogalbitkiler.png',
-        'assets/kategorileri/dogalgidaveicecekler.png',
-      ],
-      inStock: true,
-      reviewCount: 128,
-      rating: 4.8,
-      description: "Doğal yöntemlerle toplanmış ve kurutulmuş, katkı maddesi içermeyen özel seri. Mevsiminde toplanan ürünlerimiz Prof. Saraçoğlu kalite standartlarında paketlenmiştir.",
-      usage: "1. Kaynamakta olan bir bardak klorsuz suya bir tutam atınız.\n2. Kısık ateşte ağzı kapalı olarak 5 dakika demleyiniz.\n3. Sıcakken süzünüz.\n\nNot: Günde 1 kez kahvaltıdan önce tüketilmelidir.",
-      ingredients: "%100 Brassica Oleracea (Brokoli). Koruyucu ve katkı maddesi içermez. Menşei: Türkiye.",
-      warnings: "Hamilelik ve emzirme döneminde doktora danışılmalıdır. İlaç değildir. Hastalıkların önlenmesi veya tedavi edilmesi amacıyla kullanılmaz.",
-    );
+    _loadProductDetail();
   }
 
   @override
@@ -123,9 +48,89 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.dispose();
   }
 
+  /// HTML etiketlerini temizle
+  String _stripHtmlTags(String htmlString) {
+    // Remove HTML tags
+    final RegExp htmlTagRegExp = RegExp(
+      r'<[^>]*>',
+      multiLine: true,
+      caseSensitive: true,
+    );
+    String text = htmlString.replaceAll(htmlTagRegExp, '');
+
+    // Decode common HTML entities
+    text = text.replaceAll('&nbsp;', ' ');
+    text = text.replaceAll('&amp;', '&');
+    text = text.replaceAll('&lt;', '<');
+    text = text.replaceAll('&gt;', '>');
+    text = text.replaceAll('&quot;', '"');
+    text = text.replaceAll('&#39;', "'");
+    text = text.replaceAll('&apos;', "'");
+
+    // Clean up extra whitespace
+    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+    return text;
+  }
+
+  /// Ürün detayını API'den yükle
+  Future<void> _loadProductDetail() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final response = await _productService.getProductDetail(
+      productId: widget.productId,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (response != null && response.product != null) {
+          _product = response.product;
+          _similarProducts = response.similarProducts;
+          _isFavorite = _product!.isFavorite;
+          // Yorumları da yükle
+          _loadComments();
+        } else {
+          _errorMessage = 'Ürün detayı yüklenemedi';
+        }
+      });
+    }
+  }
+
+  /// Yorumları API'den yükle
+  Future<void> _loadComments() async {
+    setState(() {
+      _isLoadingComments = true;
+    });
+
+    final response = await _productService.getProductComments(
+      productId: widget.productId,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoadingComments = false;
+        if (response != null && response.success) {
+          _comments = response.comments;
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
+
+    if (_isLoading) {
+      return _buildLoadingScaffold();
+    }
+
+    if (_errorMessage != null || _product == null) {
+      return _buildErrorScaffold();
+    }
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -143,16 +148,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     children: [
                       _buildHeaderSection(),
                       const SizedBox(height: 8),
-                      _buildCertificatesRow(),
+                      _buildCargoInfo(),
                       const SizedBox(height: 8),
                       _buildInfoTabs(),
                       const SizedBox(height: 12),
                       _buildReviewSection(),
                       const SizedBox(height: 12),
-                      _buildRelatedProducts(),
-                       const SizedBox(height: 12),
-
-
+                      _buildSimilarProducts(),
+                      const SizedBox(height: 12),
                     ],
                   ),
                 ),
@@ -165,8 +168,77 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
+  Widget _buildLoadingScaffold() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              'Ürün yükleniyor...',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorScaffold() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.error),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              _errorMessage ?? 'Bir hata oluştu',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+            SizedBox(height: AppSpacing.lg),
+            ElevatedButton(
+              onPressed: _loadProductDetail,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Görsel ve App Bar Bölümü
   Widget _buildSliverAppBar() {
+    final images = _product!.allImages;
+
     return SliverAppBar(
       expandedHeight: 320.0,
       floating: false,
@@ -181,7 +253,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           boxShadow: AppShadows.shadowSM,
         ),
         child: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.textPrimary, size: 18),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.textPrimary,
+            size: 18,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -210,7 +286,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             boxShadow: AppShadows.shadowSM,
           ),
           child: IconButton(
-            icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary, size: 18),
+            icon: const Icon(
+              Icons.share_outlined,
+              color: AppColors.textPrimary,
+              size: 18,
+            ),
             onPressed: () => _shareProduct(),
           ),
         ),
@@ -220,71 +300,64 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           alignment: Alignment.bottomCenter,
           children: [
             PageView.builder(
-              itemCount: product.imageUrls.length,
-              onPageChanged: (index) => setState(() => _selectedImageIndex = index),
+              itemCount: images.length,
+              onPageChanged: (index) =>
+                  setState(() => _selectedImageIndex = index),
               itemBuilder: (context, index) {
-                final imageUrl = product.imageUrls[index];
                 return Container(
                   color: AppColors.surface,
                   padding: const EdgeInsets.all(24),
-                  child: _buildProductImage(imageUrl),
+                  child: _buildProductImage(images[index]),
                 );
               },
             ),
             // Dot Indicators
-            Positioned(
-              bottom: 12,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(
-                  product.imageUrls.length,
-                  (index) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: _selectedImageIndex == index ? 16 : 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: _selectedImageIndex == index
-                          ? AppColors.primary
-                          : AppColors.border,
-                      borderRadius: BorderRadius.circular(3),
+            if (images.length > 1)
+              Positioned(
+                bottom: 12,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    images.length,
+                    (index) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: _selectedImageIndex == index ? 16 : 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _selectedImageIndex == index
+                            ? AppColors.primary
+                            : AppColors.border,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  /// Ürün görselini yükler (asset veya network)
   Widget _buildProductImage(String imageUrl) {
-    if (imageUrl.startsWith('assets/')) {
-      return Image.asset(
-        imageUrl,
-        fit: BoxFit.contain,
-        errorBuilder: (c, o, s) => _buildImagePlaceholder(),
-      );
-    } else {
-      return Image.network(
-        imageUrl,
-        fit: BoxFit.contain,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Center(
-            child: CircularProgressIndicator(
-              value: loadingProgress.expectedTotalBytes != null
-                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                  : null,
-              color: AppColors.primary,
-            ),
-          );
-        },
-        errorBuilder: (c, o, s) => _buildImagePlaceholder(),
-      );
-    }
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.contain,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
+                : null,
+            color: AppColors.primary,
+          ),
+        );
+      },
+      errorBuilder: (c, o, s) => _buildImagePlaceholder(),
+    );
   }
 
   Widget _buildImagePlaceholder() {
@@ -296,7 +369,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Görsel yüklenemedi',
-            style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary),
+            style: AppTypography.labelSmall.copyWith(
+              color: AppColors.textTertiary,
+            ),
           ),
         ],
       ),
@@ -305,10 +380,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   /// Başlık, Fiyat ve Stok Bölümü
   Widget _buildHeaderSection() {
-    final hasDiscount = product.oldPrice != null && product.oldPrice! > product.price;
-    final discountPercent = hasDiscount
-        ? (((product.oldPrice! - product.price) / product.oldPrice!) * 100).round()
-        : 0;
+    final product = _product!;
+    final hasDiscount = product.hasDiscount;
 
     return Container(
       color: AppColors.surface,
@@ -321,42 +394,57 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              if (product.inStock) _buildTag("Stokta", AppColors.success, Icons.check_circle_outline),
-              _buildTag("Ücretsiz Kargo", AppColors.primary, Icons.local_shipping_outlined),
-              if (hasDiscount) _buildTag("%$discountPercent", AppColors.error, Icons.local_offer_outlined),
+              if (product.isInStock)
+                _buildTag(
+                  "Stokta",
+                  AppColors.success,
+                  Icons.check_circle_outline,
+                ),
+              if (hasDiscount)
+                _buildTag(
+                  "${product.productDiscountIcon}${product.productDiscount}",
+                  AppColors.error,
+                  Icons.local_offer_outlined,
+                ),
+              if (product.categories != null)
+                _buildTag(
+                  product.categories!.name,
+                  AppColors.primary,
+                  Icons.category_outlined,
+                ),
             ],
           ),
           const SizedBox(height: 10),
-          
+
           // Başlık
-          Text(product.title, style: AppTypography.h3),
-          
-          if (product.subtitle?.isNotEmpty == true)
+          Text(product.productName, style: AppTypography.h3),
+
+          if (product.productExcerpt.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                product.subtitle!,
+                product.productExcerpt,
                 style: AppTypography.bodySmall.copyWith(
                   fontStyle: FontStyle.italic,
                   color: AppColors.textSecondary,
                 ),
               ),
             ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Fiyat ve Rating
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(
-                '₺${product.price.toStringAsFixed(0)}',
+                '${product.productPrice} TL',
                 style: AppTypography.priceLarge.copyWith(fontSize: 22),
               ),
               if (hasDiscount) ...[
                 const SizedBox(width: 8),
                 Text(
-                  '₺${product.oldPrice!.toStringAsFixed(0)}',
+                  '${product.productPriceDiscount} TL',
                   style: AppTypography.priceOld.copyWith(fontSize: 14),
                 ),
               ],
@@ -383,7 +471,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           const SizedBox(width: 3),
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -391,6 +483,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Widget _buildRatingBadge() {
+    final product = _product!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -398,186 +491,278 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, color: AppColors.accent, size: 14),
+          const Icon(Icons.star_rounded, size: 16, color: AppColors.accent),
           const SizedBox(width: 3),
           Text(
-            "${product.rating}",
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.accent),
+            product.rating.isNotEmpty ? product.rating : '-',
+            style: AppTypography.labelSmall.copyWith(
+              fontWeight: FontWeight.bold,
+              color: AppColors.accent,
+            ),
           ),
+          const SizedBox(width: 3),
           Text(
-            " (${product.reviewCount})",
-            style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
+            '(${product.totalComments})',
+            style: AppTypography.labelSmall.copyWith(
+              color: AppColors.textTertiary,
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// Sertifikalar - Güven Oluşturucu
-  Widget _buildCertificatesRow() {
-    final certificates = [
-      {'icon': Icons.eco_outlined, 'label': 'Organik', 'color': AppColors.success},
-      {'icon': Icons.verified_outlined, 'label': 'Onaylı', 'color': AppColors.primary},
-      {'icon': Icons.science_outlined, 'label': 'Analizli', 'color': AppColors.info},
-      {'icon': Icons.local_shipping_outlined, 'label': 'Hızlı', 'color': AppColors.accent},
-    ];
+  /// Kargo bilgisi bölümü
+  Widget _buildCargoInfo() {
+    final product = _product!;
+    if (product.cargoInfo.isEmpty) return const SizedBox.shrink();
 
     return Container(
       color: AppColors.surface,
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: const EdgeInsets.all(14),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: certificates.map((cert) {
-          final color = cert['color'] as Color;
-          return Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.08),
-                  shape: BoxShape.circle,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.local_shipping_outlined,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  product.cargoInfo,
+                  style: AppTypography.labelMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                child: Icon(cert['icon'] as IconData, color: color, size: 18),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                cert['label'] as String,
-                style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
-              ),
-            ],
-          );
-        }).toList(),
+                if (product.cargoDetail.isNotEmpty)
+                  Text(
+                    product.cargoDetail,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  /// Bilgi Sekmeleri (Accordion)
+  /// Bilgi Sekmeleri (Açıklama, Kullanım, İçerik, Uyarılar)
   Widget _buildInfoTabs() {
-    return Column(
-      children: [
-        if (product.description?.isNotEmpty == true)
-          _buildExpansionTile(
-            title: "Ürün Açıklaması",
-            icon: Icons.info_outline,
-            content: product.description!,
-          ),
-        if (product.usage?.isNotEmpty == true)
-          _buildExpansionTile(
-            title: "Kullanım Şekli (Kür Tarifi)",
-            icon: Icons.healing_outlined,
-            initiallyExpanded: true,
-            content: product.usage!,
-          ),
-        if (product.ingredients?.isNotEmpty == true)
-          _buildExpansionTile(
-            title: "İçindekiler",
-            icon: Icons.grass_outlined,
-            content: product.ingredients!,
-          ),
-        if (product.warnings?.isNotEmpty == true)
-          _buildExpansionTile(
-            title: "Uyarılar",
-            icon: Icons.warning_amber_rounded,
-            iconColor: AppColors.warning,
-            content: product.warnings!,
-          ),
-      ],
-    );
-  }
+    final product = _product!;
 
-  Widget _buildExpansionTile({
-    required String title,
-    required IconData icon,
-    required String content,
-    bool initiallyExpanded = false,
-    Color? iconColor,
-  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 1),
       color: AppColors.surface,
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          initiallyExpanded: initiallyExpanded,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 14),
-          childrenPadding: EdgeInsets.zero,
-          leading: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: (iconColor ?? AppColors.primary).withOpacity(0.08),
-              borderRadius: BorderRadius.circular(6),
+          title: Text(
+            'Ürün Açıklaması',
+            style: AppTypography.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
             ),
-            child: Icon(icon, color: iconColor ?? AppColors.primary, size: 16),
           ),
-          title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-          iconColor: AppColors.textSecondary,
-          collapsedIconColor: AppColors.textTertiary,
+          initiallyExpanded: true,
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 14, right: 14, bottom: 14),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  content,
-                  style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
+            if (product.productDescription.isNotEmpty)
+              Text(
+                _stripHtmlTags(product.productDescription),
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              )
+            else
+              Text(
+                'Ürün açıklaması bulunmamaktadır.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  /// Yorumlar Bölümü
+  /// Yorum Bölümü
   Widget _buildReviewSection() {
+    final product = _product!;
+
     return Container(
       color: AppColors.surface,
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Başlık
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Değerlendirmeler", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              Text(
+                'Değerlendirmeler',
+                style: AppTypography.labelLarge.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               TextButton(
-                onPressed: () => _showAllReviews(),
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                child: Text("Tümü (${product.reviewCount})", style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+                onPressed: _showAllReviews,
+                child: Text(
+                  'Tümünü Gör (${product.totalComments})',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          
-          // Yorum listesi
-          ...(_reviews.take(2).map((review) => _buildReviewCard(review))),
-          
-          // Yorum yaz butonu
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () => _writeReview(),
-            icon: const Icon(Icons.rate_review_outlined, size: 16),
-            label: const Text("Yorum Yaz", style: TextStyle(fontSize: 13)),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 40),
-              padding: const EdgeInsets.symmetric(vertical: 8),
+
+          // Özet Rating
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      product.rating.isNotEmpty ? product.rating : '-',
+                      style: AppTypography.h2.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Row(
+                      children: List.generate(
+                        5,
+                        (i) => Icon(
+                          Icons.star_rounded,
+                          size: 14,
+                          color: i < (product.ratingAsDouble?.round() ?? 0)
+                              ? AppColors.accent
+                              : AppColors.border,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${product.totalComments} yorum',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    children: [5, 4, 3, 2, 1].map((star) {
+                      // Her yıldız için yorum sayısını hesapla
+                      final countForStar = _comments
+                          .where((c) => c.rating == star)
+                          .length;
+                      final percentage = _comments.isNotEmpty
+                          ? countForStar / _comments.length
+                          : 0.0;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Text('$star', style: AppTypography.labelSmall),
+                            const Icon(
+                              Icons.star_rounded,
+                              size: 12,
+                              color: AppColors.accent,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: LinearProgressIndicator(
+                                value: percentage,
+                                backgroundColor: AppColors.border,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.accent,
+                                ),
+                                minHeight: 4,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             ),
           ),
+
+          // Yorum Yaz Butonu
+          OutlinedButton.icon(
+            onPressed: _writeReview,
+            icon: const Icon(Icons.rate_review_outlined, size: 16),
+            label: const Text('Yorum Yaz'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: BorderSide(color: AppColors.primary.withOpacity(0.5)),
+              minimumSize: const Size(double.infinity, 40),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Yorumlar
+          if (_isLoadingComments)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (_comments.isNotEmpty) ...[
+            ..._comments.take(2).map((comment) => _buildCommentItem(comment)),
+          ] else
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Henüz yorum yapılmamış.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildReviewCard(ReviewData review) {
+  Widget _buildCommentItem(ProductComment comment) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,11 +770,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: AppColors.primaryLight.withOpacity(0.15),
                 radius: 16,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
                 child: Text(
-                  review.avatarInitials ?? review.userName.substring(0, 2).toUpperCase(),
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  comment.initials,
+                  style: AppTypography.labelSmall.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -597,26 +785,42 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(review.userName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    Text(review.date, style: TextStyle(fontSize: 10, color: AppColors.textTertiary)),
+                    Text(
+                      comment.userName,
+                      style: AppTypography.labelSmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      comment.date,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.textTertiary,
+                        fontSize: 10,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Row(
-                children: List.generate(5, (index) {
-                  return Icon(
-                    index < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    Icons.star_rounded,
                     size: 12,
-                    color: index < review.rating ? AppColors.accent : AppColors.border,
-                  );
-                }),
+                    color: i < comment.rating
+                        ? AppColors.accent
+                        : AppColors.border,
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
-            review.comment,
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+            comment.comment,
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -624,55 +828,70 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   /// Benzer Ürünler
-  Widget _buildRelatedProducts() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text("Birlikte İyi Gider", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-              TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                child: const Text("Tümü", style: TextStyle(fontSize: 12, color: AppColors.primary)),
+  Widget _buildSimilarProducts() {
+    if (_similarProducts.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.only(top: 14, bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+            child: Text(
+              'Benzer Ürünler',
+              style: AppTypography.labelLarge.copyWith(
+                fontWeight: FontWeight.w600,
               ),
-            ],
+            ),
           ),
-        ),
-        const SizedBox(height: 10),
-        ProductCardList(
-          products: _relatedProducts.map((item) => ProductCard(
-            title: item['title'] as String,
-            weight: "50g",
-            price: item['price'] as double,
-            imageUrl: item['image'] as String,
-            isAssetImage: true,
-            rating: 4.5,
-            reviewCount: 24,
-            onTap: () {
-              // Ürün detayına git
-            },
-            onAddToCart: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${item['title']} sepete eklendi'),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
+          const SizedBox(height: 12),
+          ProductCardList(
+            height: 330,
+            products: _similarProducts.map((product) {
+              return ProductCard(
+                title: product.productName,
+                weight: product.productExcerpt,
+                price: product.priceAsDouble,
+                oldPrice: product.hasDiscount
+                    ? product.discountPriceAsDouble
+                    : null,
+                imageUrl: product.productImage,
+                rating: product.ratingAsDouble,
+                reviewCount: product.totalComments > 0
+                    ? product.totalComments
+                    : null,
+                isFavorite: product.isFavorite,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProductDetailPage(
+                        productId: product.productID,
+                        initialProduct: product,
+                      ),
+                    ),
+                  );
+                },
+                onAddToCart: () => _handleAddToCartSimilar(product.productName),
+                onFavorite: () => _handleFavoriteSimilar(product.productName),
               );
-            },
-          )).toList(),
-        ),
-      ],
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
-  /// Sabit Alt Bar (Sticky Bottom)
+
+  /// Alt Bar - Sepete Ekle
   Widget _buildStickyBottomBar() {
-    return Align(
-      alignment: Alignment.bottomCenter,
+    final product = _product!;
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
       child: Container(
         padding: EdgeInsets.only(
           left: 14,
@@ -682,82 +901,78 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          boxShadow: AppShadows.shadowNavBar,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              offset: const Offset(0, -2),
+              blurRadius: 8,
+            ),
+          ],
         ),
         child: Row(
           children: [
             // Adet Seçici
             Container(
-              height: 40,
               decoration: BoxDecoration(
-                border: Border.all(color: AppColors.border),
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 36,
-                    height: 40,
-                    child: IconButton(
-                      onPressed: () {
-                        if (_quantity > 1) setState(() => _quantity--);
-                      },
-                      icon: Icon(
-                        Icons.remove,
-                        size: 16,
-                        color: _quantity > 1 ? AppColors.textPrimary : AppColors.textTertiary,
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 24,
+                  _buildQuantityButton(Icons.remove, () {
+                    if (_quantity > 1) setState(() => _quantity--);
+                  }),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 32),
+                    alignment: Alignment.center,
                     child: Text(
-                      "$_quantity",
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      '$_quantity',
+                      style: AppTypography.labelLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  SizedBox(
-                    width: 36,
-                    height: 40,
-                    child: IconButton(
-                      onPressed: () => setState(() => _quantity++),
-                      icon: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
+                  _buildQuantityButton(Icons.add, () {
+                    if (_quantity < product.productStock) {
+                      setState(() => _quantity++);
+                    }
+                  }),
                 ],
               ),
             ),
             const SizedBox(width: 12),
+
             // Sepete Ekle Butonu
             Expanded(
-              child: SizedBox(
-                height: 40,
-                child: ElevatedButton(
-                  onPressed: product.inStock ? () => _addToCart() : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.textOnPrimary,
-                    disabledBackgroundColor: AppColors.border,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    elevation: 0,
+              child: GestureDetector(
+                onTap: product.isInStock ? _addToCart : null,
+                child: Container(
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: product.isInStock
+                        ? AppColors.primary
+                        : AppColors.textTertiary,
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.shopping_bag_outlined, size: 16),
+                      const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 6),
                       Text(
-                        product.inStock
-                            ? "Sepete Ekle - ₺${(product.price * _quantity).toStringAsFixed(0)}"
+                        product.isInStock
+                            ? "Sepete Ekle - ${(product.priceAsDouble * _quantity).toStringAsFixed(2)} TL"
                             : "Stokta Yok",
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
@@ -770,13 +985,23 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
+  Widget _buildQuantityButton(IconData icon, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        child: Icon(icon, size: 18, color: AppColors.textPrimary),
+      ),
+    );
+  }
+
   // --- Action Methods ---
 
   void _shareProduct() {
-    // Ürün paylaşma işlemi
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${product.title} paylaşılıyor...'),
+        content: Text('${_product!.productName} paylaşılıyor...'),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
@@ -785,14 +1010,16 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Future<void> _toggleFavorite() async {
-    // Login kontrolü yap
-    if (!await AuthGuard.checkAuth(context, message: 'Favorilere eklemek için giriş yapın')) {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Favorilere eklemek için giriş yapın',
+    )) {
       return;
     }
-    
+
     HapticFeedback.lightImpact();
     setState(() => _isFavorite = !_isFavorite);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -805,9 +1032,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             const SizedBox(width: AppSpacing.sm),
             Expanded(
               child: Text(
-                _isFavorite 
-                  ? '${product.title} favorilere eklendi'
-                  : '${product.title} favorilerden çıkarıldı',
+                _isFavorite
+                    ? '${_product!.productName} favorilere eklendi'
+                    : '${_product!.productName} favorilerden çıkarıldı',
               ),
             ),
           ],
@@ -820,11 +1047,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   Future<void> _addToCart() async {
-    // Login kontrolü yap
-    if (!await AuthGuard.checkAuth(context, message: 'Sepete eklemek için giriş yapın')) {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Sepete eklemek için giriş yapın',
+    )) {
       return;
     }
-    
+
     HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -832,7 +1061,11 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           children: [
             const Icon(Icons.check_circle, color: Colors.white),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text('$_quantity adet ${product.title} sepete eklendi')),
+            Expanded(
+              child: Text(
+                '$_quantity adet ${_product!.productName} sepete eklendi',
+              ),
+            ),
           ],
         ),
         backgroundColor: AppColors.success,
@@ -849,12 +1082,148 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     );
   }
 
+  Future<void> _handleAddToCartSimilar(String productName) async {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Sepete eklemek için giriş yapın',
+    )) {
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('$productName sepete eklendi')),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+      ),
+    );
+  }
+
+  Future<void> _handleFavoriteSimilar(String productName) async {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Favorilere eklemek için giriş yapın',
+    )) {
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.favorite, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('$productName favorilere eklendi')),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+      ),
+    );
+  }
+
   void _showAllReviews() {
-    // Tüm yorumları gösteren sayfa veya modal
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(
+              top: Radius.circular(AppRadius.xl),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Başlık
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Tüm Değerlendirmeler (${_comments.length})',
+                      style: AppTypography.h3,
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Yorum listesi
+              Expanded(
+                child: _comments.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.rate_review_outlined,
+                              size: 64,
+                              color: AppColors.textTertiary.withOpacity(0.5),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Henüz yorum yapılmamış',
+                              style: AppTypography.bodyMedium.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _comments.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          return _buildCommentItem(_comments[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _writeReview() {
-    // Yorum yazma modalı
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -863,7 +1232,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         height: MediaQuery.of(context).size.height * 0.7,
         decoration: const BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.xl),
+          ),
         ),
         padding: AppSpacing.paddingXL,
         child: Column(
@@ -882,7 +1253,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             const SizedBox(height: AppSpacing.xl),
             Text("Yorum Yaz", style: AppTypography.h3),
             const SizedBox(height: AppSpacing.lg),
-            Text("Bu özellik yakında eklenecektir.", style: AppTypography.bodyMedium),
+            Text(
+              "Bu özellik yakında eklenecektir.",
+              style: AppTypography.bodyMedium,
+            ),
           ],
         ),
       ),

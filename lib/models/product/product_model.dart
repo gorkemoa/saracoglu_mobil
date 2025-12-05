@@ -365,3 +365,316 @@ class ProductFilter {
     );
   }
 }
+
+/// Ürün galerisi modeli
+class ProductGallery {
+  final String title;
+  final String img;
+
+  ProductGallery({required this.title, required this.img});
+
+  factory ProductGallery.fromJson(Map<String, dynamic> json) {
+    return ProductGallery(title: json['title'] ?? '', img: json['img'] ?? '');
+  }
+}
+
+/// Ürün kategorisi modeli
+class ProductCategory {
+  final int id;
+  final String name;
+
+  ProductCategory({required this.id, required this.name});
+
+  factory ProductCategory.fromJson(Map<String, dynamic> json) {
+    return ProductCategory(id: json['id'] ?? 0, name: json['name'] ?? '');
+  }
+}
+
+/// Ürün varyantı modeli
+class ProductVariant {
+  final int variantID;
+  final String variantName;
+  final String variantValue;
+  final String variantPrice;
+  final int variantStock;
+
+  ProductVariant({
+    required this.variantID,
+    required this.variantName,
+    required this.variantValue,
+    required this.variantPrice,
+    required this.variantStock,
+  });
+
+  factory ProductVariant.fromJson(Map<String, dynamic> json) {
+    return ProductVariant(
+      variantID: json['variantID'] ?? 0,
+      variantName: json['variantName'] ?? '',
+      variantValue: json['variantValue'] ?? '',
+      variantPrice: json['variantPrice']?.toString() ?? '0',
+      variantStock: json['variantStock'] ?? 0,
+    );
+  }
+}
+
+/// Ürün detay modeli (GetProduct endpoint'inden dönen)
+class ProductDetailModel {
+  final int productID;
+  final String productName;
+  final String productExcerpt;
+  final String productDescription;
+  final String productImage;
+  final int productStock;
+  final String productPrice;
+  final String productPriceDiscount;
+  final int productDiscountType;
+  final String productDiscount;
+  final String productDiscountIcon;
+  final int totalComments;
+  final String rating;
+  final String cargoInfo;
+  final String cargoDetail;
+  final bool isFavorite;
+  final List<ProductGallery> galleries;
+  final ProductCategory? categories;
+  final List<ProductVariant> variants;
+
+  ProductDetailModel({
+    required this.productID,
+    required this.productName,
+    required this.productExcerpt,
+    required this.productDescription,
+    required this.productImage,
+    required this.productStock,
+    required this.productPrice,
+    required this.productPriceDiscount,
+    required this.productDiscountType,
+    required this.productDiscount,
+    required this.productDiscountIcon,
+    required this.totalComments,
+    required this.rating,
+    required this.cargoInfo,
+    required this.cargoDetail,
+    required this.isFavorite,
+    required this.galleries,
+    this.categories,
+    required this.variants,
+  });
+
+  factory ProductDetailModel.fromJson(Map<String, dynamic> json) {
+    List<ProductGallery> galleryList = [];
+    if (json['galleries'] != null) {
+      galleryList = (json['galleries'] as List)
+          .map((item) => ProductGallery.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    List<ProductVariant> variantList = [];
+    if (json['variants'] != null && json['variants'] is List) {
+      variantList = (json['variants'] as List)
+          .map((item) => ProductVariant.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    ProductCategory? category;
+    if (json['categories'] != null && json['categories'] is Map) {
+      category = ProductCategory.fromJson(
+        json['categories'] as Map<String, dynamic>,
+      );
+    }
+
+    return ProductDetailModel(
+      productID: json['productID'] ?? 0,
+      productName: json['productName'] ?? '',
+      productExcerpt: json['productExcerpt'] ?? '',
+      productDescription: json['productDescription'] ?? '',
+      productImage: json['productImage'] ?? '',
+      productStock: json['productStock'] ?? 0,
+      productPrice: json['productPrice']?.toString() ?? '0',
+      productPriceDiscount: json['productPriceDiscount']?.toString() ?? '0,00',
+      productDiscountType: json['productDiscountType'] ?? 0,
+      productDiscount: json['productDiscount']?.toString() ?? '',
+      productDiscountIcon: json['productDiscountIcon'] ?? '',
+      totalComments: json['totalComments'] ?? 0,
+      rating: json['rating']?.toString() ?? '',
+      cargoInfo: json['cargoInfo'] ?? '',
+      cargoDetail: json['cargoDetail'] ?? '',
+      isFavorite: json['isFavorite'] ?? false,
+      galleries: galleryList,
+      categories: category,
+      variants: variantList,
+    );
+  }
+
+  /// Fiyatı double olarak döndürür
+  double get priceAsDouble {
+    return double.tryParse(
+          productPrice.replaceAll(',', '.').replaceAll(' ', ''),
+        ) ??
+        0.0;
+  }
+
+  /// İndirimli fiyatı double olarak döndürür (eski fiyat)
+  double get discountPriceAsDouble {
+    return double.tryParse(
+          productPriceDiscount.replaceAll(',', '.').replaceAll(' ', ''),
+        ) ??
+        0.0;
+  }
+
+  /// İndirim var mı kontrolü
+  bool get hasDiscount =>
+      productDiscountType != 0 && productDiscount.isNotEmpty;
+
+  /// İndirim badge metni
+  String? get discountBadgeText {
+    if (!hasDiscount) return null;
+    return '$productDiscountIcon$productDiscount';
+  }
+
+  /// Rating'i double olarak döndürür
+  double? get ratingAsDouble {
+    if (rating.isEmpty) return null;
+    return double.tryParse(rating.replaceAll(',', '.'));
+  }
+
+  /// Stokta mı kontrolü
+  bool get isInStock => productStock > 0;
+
+  /// Tüm görselleri liste olarak döndür
+  List<String> get allImages {
+    if (galleries.isNotEmpty) {
+      return galleries.map((g) => g.img).toList();
+    }
+    return [productImage];
+  }
+}
+
+/// Ürün detay response modeli
+class ProductDetailResponse {
+  final ProductDetailModel? product;
+  final List<ProductModel> similarProducts;
+  final bool error;
+  final bool success;
+
+  ProductDetailResponse({
+    this.product,
+    required this.similarProducts,
+    required this.error,
+    required this.success,
+  });
+
+  factory ProductDetailResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+
+    ProductDetailModel? productDetail;
+    if (data != null && data['product'] != null) {
+      productDetail = ProductDetailModel.fromJson(
+        data['product'] as Map<String, dynamic>,
+      );
+    }
+
+    List<ProductModel> similarList = [];
+    if (data != null && data['similarProducts'] != null) {
+      similarList = (data['similarProducts'] as List)
+          .map((item) => ProductModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    return ProductDetailResponse(
+      product: productDetail,
+      similarProducts: similarList,
+      error: json['error'] ?? true,
+      success: json['success'] ?? false,
+    );
+  }
+}
+
+/// Yorum modeli
+class ProductComment {
+  final int commentID;
+  final int userID;
+  final bool showName;
+  final String userName;
+  final String date;
+  final int rating;
+  final String comment;
+
+  ProductComment({
+    required this.commentID,
+    required this.userID,
+    required this.showName,
+    required this.userName,
+    required this.date,
+    required this.rating,
+    required this.comment,
+  });
+
+  factory ProductComment.fromJson(Map<String, dynamic> json) {
+    return ProductComment(
+      commentID: json['commentID'] ?? 0,
+      userID: json['userID'] ?? 0,
+      showName: json['showName'] ?? false,
+      userName: json['userName'] ?? '',
+      date: json['date'] ?? '',
+      rating: json['rating'] ?? 0,
+      comment: json['comment'] ?? '',
+    );
+  }
+
+  /// Kullanıcı adının baş harflerini döndürür
+  String get initials {
+    final parts = userName.split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return userName.isNotEmpty ? userName[0].toUpperCase() : '?';
+  }
+}
+
+/// Ürün yorumları response modeli
+class ProductCommentsResponse {
+  final int productID;
+  final String productName;
+  final String productImage;
+  final int totalComments;
+  final double rating;
+  final List<ProductComment> comments;
+  final bool error;
+  final bool success;
+
+  ProductCommentsResponse({
+    required this.productID,
+    required this.productName,
+    required this.productImage,
+    required this.totalComments,
+    required this.rating,
+    required this.comments,
+    required this.error,
+    required this.success,
+  });
+
+  factory ProductCommentsResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    final product = data?['product'] as Map<String, dynamic>?;
+
+    List<ProductComment> commentList = [];
+    if (product != null && product['comments'] != null) {
+      commentList = (product['comments'] as List)
+          .map((item) => ProductComment.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
+    return ProductCommentsResponse(
+      productID: product?['productID'] ?? 0,
+      productName: product?['productName'] ?? '',
+      productImage: product?['productImage'] ?? '',
+      totalComments:
+          product?['taotalComments'] ?? product?['totalComments'] ?? 0,
+      rating: (product?['rating'] ?? 0).toDouble(),
+      comments: commentList,
+      error: json['error'] ?? true,
+      success: json['success'] ?? false,
+    );
+  }
+}

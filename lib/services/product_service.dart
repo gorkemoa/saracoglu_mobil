@@ -331,4 +331,88 @@ class ProductService {
   void clearSortListCache() {
     _cachedSortList = null;
   }
+
+  /// Ürün detayını getir
+  /// [productId] - Ürün ID
+  /// [variantId] - Varyant ID (opsiyonel)
+  Future<ProductDetailResponse?> getProductDetail({
+    required int productId,
+    int? variantId,
+  }) async {
+    try {
+      _logger.i('📦 Ürün detayı getiriliyor - ID: $productId');
+
+      // Query parametrelerini oluştur
+      String endpoint = '${ApiConstants.getProduct}/$productId';
+      List<String> queryParams = [];
+
+      // userToken ekle (opsiyonel ama favoriler için gerekli)
+      if (_userToken.isNotEmpty) {
+        queryParams.add('userToken=$_userToken');
+      }
+
+      // variantID ekle (opsiyonel)
+      if (variantId != null) {
+        queryParams.add('variantID=$variantId');
+      }
+
+      if (queryParams.isNotEmpty) {
+        endpoint = '$endpoint?${queryParams.join('&')}';
+      }
+
+      _logger.d('📤 Request URL: $endpoint');
+
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = ProductDetailResponse.fromJson(result.data!);
+        if (response.success && response.product != null) {
+          _logger.i(
+            '✅ Ürün detayı getirildi: ${response.product!.productName}',
+          );
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ Ürün detayı getirilemedi: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ Ürün detayı getirme hatası', error: e);
+      return null;
+    }
+  }
+
+  /// Ürün yorumlarını getir
+  /// [productId] - Zorunlu: Ürün ID
+  Future<ProductCommentsResponse?> getProductComments({
+    required int productId,
+  }) async {
+    try {
+      final endpoint = '${ApiConstants.getProductComments}/$productId';
+
+      _logger.d('📤 Request URL: $endpoint');
+
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = ProductCommentsResponse.fromJson(result.data!);
+        if (response.success) {
+          _logger.i('✅ Yorumlar getirildi: ${response.comments.length} yorum');
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ Yorumlar getirilemedi: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ Yorum getirme hatası', error: e);
+      return null;
+    }
+  }
 }

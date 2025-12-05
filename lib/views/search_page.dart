@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_card.dart';
+import '../services/product_service.dart';
+import '../services/auth_service.dart';
+import '../models/product/product_model.dart';
+import 'product_detail_page.dart';
 
 class SearchPage extends StatefulWidget {
   final bool showBackButton;
@@ -14,47 +19,20 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ProductService _productService = ProductService();
+  final ScrollController _scrollController = ScrollController();
 
-  // Sana Özel Ürünler
-  final List<Map<String, dynamic>> _specialProducts = [
-    {
-      'title': 'Çörek Otu Yağı Soğuk Sıkım 100ml',
-      'weight': '100ml',
-      'price': 189.90,
-      'imageUrl': 'assets/kategorileri/soguksikimyaglar.png',
-      'badgeText': '2. Ürün %10',
-      'badgeColor': const Color(0xFFFF5722),
-      'isAsset': true,
-    },
-    {
-      'title': 'Ihlamur Yaprak Doğal 50g',
-      'weight': '50g',
-      'price': 79.90,
-      'imageUrl': 'assets/kategorileri/dogalbitkiler.png',
-      'badgeText': 'Kargo Bedava',
-      'badgeColor': const Color(0xFF333333),
-      'isAsset': true,
-    },
-    {
-      'title': 'Organik Ham Bal 450g',
-      'weight': '450g',
-      'price': 329.90,
-      'imageUrl': 'assets/kategorileri/dogalgidaveicecekler.png',
-      'badgeText': 'Çok Satan',
-      'badgeColor': const Color(0xFFFF5722),
-      'sponsorlu': true,
-      'isAsset': true,
-    },
-    {
-      'title': 'Lavanta Yağı Saf 50ml',
-      'weight': '50ml',
-      'price': 149.90,
-      'imageUrl': 'assets/kategorileri/aromaterapi.png',
-      'badgeText': 'Yeni',
-      'badgeColor': const Color(0xFF4CAF50),
-      'isAsset': true,
-    },
-  ];
+  // Arama sonuçları state
+  List<ProductModel> _searchResults = [];
+  bool _isSearching = false;
+  bool _isLoadingMore = false;
+  bool _isLastPage = false;
+  int _currentPage = 1;
+  String _lastSearchText = '';
+
+  // Sana Özel Ürünler (API'den)
+  List<ProductModel> _specialProducts = [];
+  bool _isLoadingSpecialProducts = true;
 
   // Önceden Gezdiklerim
   final List<Map<String, dynamic>> _recentlyViewed = [
@@ -81,17 +59,180 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
+    _searchController.addListener(_onSearchTextChanged);
     // Sayfa açıldığında arama kutusuna otomatik focus
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _searchFocusNode.requestFocus();
     });
+    _loadSpecialProducts();
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchTextChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Scroll listener for pagination
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMoreSearchResults();
+    }
+  }
+
+  /// Arama metni değiştiğinde (debounce ile)
+  void _onSearchTextChanged() {
+    final text = _searchController.text.trim();
+    if (text.length >= 2 && text != _lastSearchText) {
+      _performSearch(text);
+    } else if (text.isEmpty && _searchResults.isNotEmpty) {
+      setState(() {
+        _searchResults = [];
+        _lastSearchText = '';
+      });
+    }
+  }
+
+  /// Özel ürünleri yükle (çok satanlar)
+  Future<void> _loadSpecialProducts() async {
+    final response = await _productService.getAllProducts(
+      ProductFilter(sortKey: ProductSortKey.sortBestSellers, page: 1),
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoadingSpecialProducts = false;
+        if (response != null) {
+          _specialProducts = response.products.take(10).toList();
+        }
+      });
+    }
+  }
+
+  /// Arama yap
+  Future<void> _performSearch(String searchText) async {
+    if (searchText.length < 2) return;
+
+    setState(() {
+      _isSearching = true;
+      _currentPage = 1;
+      _searchResults = [];
+      _lastSearchText = searchText;
+    });
+
+    final response = await _productService.searchProducts(
+      searchText: searchText,
+      page: 1,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isSearching = false;
+        if (response != null) {
+          _searchResults = response.products;
+          _isLastPage = response.isLastPage;
+        }
+      });
+    }
+  }
+
+  /// Daha fazla arama sonucu yükle
+  Future<void> _loadMoreSearchResults() async {
+    if (_isLoadingMore || _isLastPage || _lastSearchText.isEmpty) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    final nextPage = _currentPage + 1;
+    final response = await _productService.searchProducts(
+      searchText: _lastSearchText,
+      page: nextPage,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoadingMore = false;
+        if (response != null) {
+          _currentPage = nextPage;
+          _searchResults.addAll(response.products);
+          _isLastPage = response.isLastPage;
+        }
+      });
+    }
+  }
+
+  void _navigateToProductDetail(ProductModel product) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProductDetailPage(
+          productId: product.productID,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleAddToCart(String productName) async {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Sepete eklemek için giriş yapın',
+    )) {
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('$productName sepete eklendi')),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+      ),
+    );
+  }
+
+  Future<void> _handleFavorite(String productName) async {
+    if (!await AuthGuard.checkAuth(
+      context,
+      message: 'Favorilere eklemek için giriş yapın',
+    )) {
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.favorite, color: Colors.white, size: 20),
+            const SizedBox(width: 12),
+            Expanded(child: Text('$productName favorilere eklendi')),
+          ],
+        ),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+      ),
+    );
   }
 
   @override
@@ -103,22 +244,22 @@ class _SearchPageState extends State<SearchPage> {
           children: [
             _buildSearchHeader(),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: AppSpacing.lg),
-                    _buildRecentlyViewed(),
-
-                    SizedBox(height: AppSpacing.xl),
-                    _buildSpecialProducts(),
-                    SizedBox(height: AppSpacing.xl),
-                    _buildPopularSearches(),
-
-                    SizedBox(height: AppSpacing.xl),
-                  ],
-                ),
-              ),
+              child: _searchResults.isNotEmpty || _isSearching
+                  ? _buildSearchResults()
+                  : SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(height: AppSpacing.lg),
+                          _buildRecentlyViewed(),
+                          SizedBox(height: AppSpacing.xl),
+                          _buildSpecialProducts(),
+                          SizedBox(height: AppSpacing.xl),
+                          _buildPopularSearches(),
+                          SizedBox(height: AppSpacing.xl),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -148,22 +289,26 @@ class _SearchPageState extends State<SearchPage> {
                 children: [
                   Icon(Icons.search, color: Colors.grey.shade600, size: 20),
                   SizedBox(width: 8),
-
                   Expanded(
                     child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (value) {
+                        if (value.trim().length >= 2) {
+                          _performSearch(value.trim());
+                        }
+                      },
                       decoration: InputDecoration(
                         hintText: "Marka, ürün veya kategori ara",
                         hintStyle: TextStyle(
                           color: Colors.grey.shade600,
                           fontSize: 14,
                         ),
-
-                        // Çizgiyi %100 yok eden kısım:
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
                         disabledBorder: InputBorder.none,
-
                         isCollapsed: true,
                         contentPadding: EdgeInsets.zero,
                         filled: false,
@@ -171,13 +316,27 @@ class _SearchPageState extends State<SearchPage> {
                       style: TextStyle(fontSize: 15, color: Colors.black),
                     ),
                   ),
-
-                  SizedBox(width: 8),
-                  Icon(
-                    Icons.camera_alt_outlined,
-                    color: Colors.grey.shade600,
-                    size: 20,
-                  ),
+                  if (_searchController.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchResults = [];
+                          _lastSearchText = '';
+                        });
+                      },
+                      child: Icon(
+                        Icons.close,
+                        color: Colors.grey.shade600,
+                        size: 20,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.camera_alt_outlined,
+                      color: Colors.grey.shade600,
+                      size: 20,
+                    ),
                 ],
               ),
             ),
@@ -188,12 +347,15 @@ class _SearchPageState extends State<SearchPage> {
               if (widget.showBackButton) {
                 Navigator.pop(context);
               } else {
-                _searchController.clear();
+                final text = _searchController.text.trim();
+                if (text.length >= 2) {
+                  _performSearch(text);
+                }
                 FocusScope.of(context).unfocus();
               }
             },
             child: Text(
-              'Ara',
+              widget.showBackButton ? 'İptal' : 'Ara',
               style: TextStyle(
                 color: AppColors.primary,
                 fontSize: 15,
@@ -206,7 +368,126 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  /// Arama sonuçları widget'ı
+  Widget _buildSearchResults() {
+    if (_isSearching) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              'Aranıyor...',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 64, color: AppColors.textTertiary),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              '"$_lastSearchText" için sonuç bulunamadı',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.all(AppSpacing.md),
+          child: Text(
+            '${_searchResults.length} sonuç bulundu',
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              bottom: AppSpacing.xl,
+            ),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 0.53,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: _searchResults.length + (_isLoadingMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= _searchResults.length) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.lg),
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                );
+              }
+              final product = _searchResults[index];
+              return ProductCard(
+                title: product.productName,
+                weight: product.productExcerpt.isNotEmpty
+                    ? product.productExcerpt
+                    : '',
+                price: product.priceAsDouble,
+                oldPrice: product.hasDiscount
+                    ? product.discountPriceAsDouble
+                    : null,
+                imageUrl: product.productImage,
+                rating: product.ratingAsDouble,
+                reviewCount: product.totalComments > 0
+                    ? product.totalComments
+                    : null,
+                isFavorite: product.isFavorite,
+                onTap: () => _navigateToProductDetail(product),
+                onAddToCart: () => _handleAddToCart(product.productName),
+                onFavorite: () => _handleFavorite(product.productName),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSpecialProducts() {
+    if (_isLoadingSpecialProducts) {
+      return SizedBox(
+        height: 330,
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
+
+    if (_specialProducts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -248,22 +529,25 @@ class _SearchPageState extends State<SearchPage> {
           height: 330,
           products: _specialProducts.map((product) {
             return ProductCard(
-              title: product['title'],
-              weight: product['weight'],
-              price: product['price'],
-              imageUrl: product['imageUrl'],
-              isAssetImage: product['isAsset'] == true,
-              badgeText: product['badgeText'],
-              badgeColor: product['badgeColor'],
-              onTap: () {
-                // Ürün detayına git
-              },
-              onAddToCart: () {
-                // Sepete ekle
-              },
-              onFavorite: () {
-                // Favorilere ekle
-              },
+              title: product.productName,
+              weight: product.productExcerpt.isNotEmpty
+                  ? product.productExcerpt
+                  : '',
+              price: product.priceAsDouble,
+              oldPrice: product.hasDiscount
+                  ? product.discountPriceAsDouble
+                  : null,
+              imageUrl: product.productImage,
+              rating: product.ratingAsDouble,
+              reviewCount: product.totalComments > 0
+                  ? product.totalComments
+                  : null,
+              badgeText: product.hasDiscount ? 'KAMPANYA' : null,
+              badgeColor: const Color(0xFF7B2CBF),
+              isFavorite: product.isFavorite,
+              onTap: () => _navigateToProductDetail(product),
+              onAddToCart: () => _handleAddToCart(product.productName),
+              onFavorite: () => _handleFavorite(product.productName),
             );
           }).toList(),
         ),
@@ -428,7 +712,7 @@ class _SearchPageState extends State<SearchPage> {
     return GestureDetector(
       onTap: () {
         _searchController.text = text;
-        // Arama yap
+        _performSearch(text);
       },
       child: Container(
         padding: EdgeInsets.symmetric(

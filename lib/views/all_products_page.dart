@@ -238,7 +238,7 @@ class _AllProductsPageState extends State<AllProductsPage> {
       context,
       MaterialPageRoute(
         builder: (context) => ProductDetailPage(
-          // product: product,
+          productId: product.productID,
         ),
       ),
     );
@@ -421,13 +421,21 @@ class _AllProductsPageState extends State<AllProductsPage> {
               ),
             ],
           ),
-          SizedBox(height: AppSpacing.md),
-          if (_sortOptions.isNotEmpty)
-            ..._sortOptions.map((option) => _buildSortOptionFromApi(option))
-          else
-            ...ProductSortKey.values.map(
-              (sortKey) => _buildSortOption(sortKey),
+          Expanded(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                if (_sortOptions.isNotEmpty)
+                  ..._sortOptions.map(
+                    (option) => _buildSortOptionFromApi(option),
+                  )
+                else
+                  ...ProductSortKey.values.map(
+                    (sortKey) => _buildSortOption(sortKey),
+                  ),
+              ],
             ),
+          ),
           SizedBox(height: AppSpacing.md),
         ],
       ),
