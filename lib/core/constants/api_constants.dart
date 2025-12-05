@@ -71,4 +71,8 @@ class ApiConstants {
 
   /// Basket Endpoints
   static const String addToBasket = 'service/user/account/basket/add';
+  static const String getUserBaskets = 'service/user/account/basket/list';
+  static const String updateBasket = 'service/user/account/basket/update';
+  static const String deleteBasket = 'service/user/account/basket/delete';
+  static const String clearBasket = 'service/user/account/basket/clear';
 }

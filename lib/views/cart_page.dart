@@ -1,39 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
-import '../models/delivery_address.dart';
+import '../models/basket/basket_model.dart';
+import '../models/address/user_address_model.dart';
+import '../models/coupon/user_coupon_model.dart';
 import '../widgets/add_address_sheet.dart';
 import '../services/auth_service.dart';
+import '../services/basket_service.dart';
+import '../services/address_service.dart';
+import '../services/coupon_service.dart';
 import 'auth/login_page.dart';
-
-class CartItem {
-  final String id;
-  final String title;
-  final String weight;
-  final double price;
-  final double? oldPrice;
-  final String imageUrl;
-  final bool isAssetImage;
-  int quantity;
-
-  CartItem({
-    required this.id,
-    required this.title,
-    required this.weight,
-    required this.price,
-    this.oldPrice,
-    required this.imageUrl,
-    this.isAssetImage = false,
-    this.quantity = 1,
-  });
-
-  int? get discount {
-    if (oldPrice != null && oldPrice! > price) {
-      return ((oldPrice! - price) / oldPrice! * 100).round();
-    }
-    return null;
-  }
-}
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -43,108 +19,29 @@ class CartPage extends StatefulWidget {
 }
 
 class CartPageState extends State<CartPage> with TickerProviderStateMixin {
-  // Demo adresler - gerçek uygulamada API'den gelecek
-  final List<DeliveryAddress> _addresses = [
-    DeliveryAddress(
-      id: '1',
-      title: 'Ev',
-      fullAddress: 'Mansuroğlu Mah. 286/5 Sok. No: 14 Daire: 7',
-      city: 'İzmir',
-      district: 'Bayraklı',
-      phone: '05XX XXX XX XX',
-      isDefault: true,
-    ),
-    DeliveryAddress(
-      id: '2',
-      title: 'Ofis',
-      fullAddress: 'Cumhuriyet Bulvarı No: 110 Kat: 4 Office701',
-      city: 'İzmir',
-      district: 'Konak',
-      phone: '05XX XXX XX XX',
-    ),
-    DeliveryAddress(
-      id: '3',
-      title: 'Aile Evi',
-      fullAddress: 'Bağbaşı Mah. 1203 Sok. No: 22',
-      city: 'Denizli',
-      district: 'Merkezefendi',
-      phone: '05XX XXX XX XX',
-    ),
-    DeliveryAddress(
-      id: '4',
-      title: 'Yazlık',
-      fullAddress: 'Bitez Mah. 2040 Sok. No: 8 Villa',
-      city: 'Muğla',
-      district: 'Bodrum',
-      phone: '05XX XXX XX XX',
-    ),
-  ];
+  final BasketService _basketService = BasketService();
+  final AddressService _addressService = AddressService();
+  final CouponService _couponService = CouponService();
 
-  DeliveryAddress? _selectedAddress;
+  // API'den gelen adresler
+  List<UserAddress> _addresses = [];
+  UserAddress? _selectedAddress;
+  bool _isLoadingAddresses = false;
 
-  // Demo sepet ürünleri - gerçek uygulamada state management ile yönetilecek
-  final List<CartItem> _cartItems = [
-    CartItem(
-      id: '1',
-      title: 'Aromaterapi Yağı',
-      weight: '50 ml',
-      price: 189.90,
-      oldPrice: 229.90,
-      imageUrl: 'assets/kategorileri/aromaterapi.png',
-      isAssetImage: true,
-      quantity: 1,
-    ),
-    CartItem(
-      id: '2',
-      title: 'Doğal Bitkisel Çay',
-      weight: '100 gr',
-      price: 129.90,
-      imageUrl: 'assets/kategorileri/dogalbitkiler.png',
-      isAssetImage: true,
-      quantity: 2,
-    ),
-    CartItem(
-      id: '3',
-      title: 'Soğuk Sıkım Zeytinyağı',
-      weight: '500 ml',
-      price: 349.90,
-      oldPrice: 399.90,
-      imageUrl: 'assets/kategorileri/soguksikimyaglar.png',
-      isAssetImage: true,
-      quantity: 1,
-    ),
-  ];
+  // API'den gelen sepet verileri
+  BasketData? _basketData;
+  List<BasketItem> _cartItems = [];
+  bool _isLoading = false;
+
+  // API'den gelen kuponlar
+  List<UserCoupon> _userCoupons = [];
+  bool _isLoadingCoupons = false;
 
   String? _appliedCoupon;
   double _couponDiscount = 0;
   final TextEditingController _couponController = TextEditingController();
   bool _isApplyingCoupon = false;
   bool _showManualCouponInput = false;
-
-  // Kullanıcının mevcut kuponları (gerçek uygulamada API'den gelecek)
-  final List<Map<String, dynamic>> _userCoupons = [
-    {
-      'code': 'HOSGELDIN',
-      'description': 'Hoş geldin indirimi',
-      'discount': 50.0,
-      'isPercentage': false,
-      'minAmount': 100.0,
-    },
-    {
-      'code': 'INDIRIM10',
-      'description': '%10 indirim',
-      'discount': 10.0,
-      'isPercentage': true,
-      'minAmount': 200.0,
-    },
-    {
-      'code': 'SARACOGLU',
-      'description': '100₺ indirim',
-      'discount': 100.0,
-      'isPercentage': false,
-      'minAmount': 500.0,
-    },
-  ];
 
   // Animasyon kontrolcüleri
   late AnimationController _slideController;
@@ -157,17 +54,111 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       vsync: this,
     );
     _slideController.forward();
-    // Varsayılan adresi seç
-    _selectedAddress = _addresses.firstWhere(
-      (a) => a.isDefault,
-      orElse: () => _addresses.first,
-    );
+    // Tüm verileri yükle
+    _loadAllData();
   }
 
   /// Sayfayı yenile - MainScreen'den çağrılır
   void refresh() {
-    // TODO: Sepet API entegrasyonu yapıldığında burası güncellenecek
-    setState(() {});
+    _loadAllData();
+  }
+
+  /// Tüm verileri yükle (sepet, adresler, kuponlar)
+  Future<void> _loadAllData() async {
+    final authService = AuthService();
+    if (!authService.isLoggedIn) {
+      setState(() {
+        _cartItems = [];
+        _basketData = null;
+        _addresses = [];
+        _selectedAddress = null;
+        _userCoupons = [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Paralel olarak yükle
+    await Future.wait([_loadBasket(), _loadAddresses(), _loadCoupons()]);
+  }
+
+  /// Sepeti API'den yükle
+  Future<void> _loadBasket() async {
+    final authService = AuthService();
+    if (!authService.isLoggedIn) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await _basketService.getUserBaskets();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          if (response != null && response.success && response.data != null) {
+            _basketData = response.data;
+            _cartItems = response.data!.baskets;
+          } else {
+            _basketData = null;
+            _cartItems = [];
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Adresleri API'den yükle
+  Future<void> _loadAddresses() async {
+    setState(() => _isLoadingAddresses = true);
+
+    try {
+      final response = await _addressService.getAddresses();
+      if (mounted) {
+        setState(() {
+          _isLoadingAddresses = false;
+          if (response.isSuccess) {
+            _addresses = response.addresses;
+            // İlk adresi varsayılan olarak seç
+            if (_addresses.isNotEmpty && _selectedAddress == null) {
+              _selectedAddress = _addresses.first;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingAddresses = false);
+      }
+    }
+  }
+
+  /// Kuponları API'den yükle
+  Future<void> _loadCoupons() async {
+    setState(() => _isLoadingCoupons = true);
+
+    try {
+      final response = await _couponService.getCoupons();
+      if (mounted) {
+        setState(() {
+          _isLoadingCoupons = false;
+          if (response.isSuccess) {
+            // Sadece aktif kuponları al
+            _userCoupons = response.coupons.where((c) => c.isActive).toList();
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingCoupons = false);
+      }
+    }
   }
 
   @override
@@ -177,72 +168,209 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  /// API'den gelen subtotal değerini double'a çevir
   double get _subtotal {
-    return _cartItems.fold(
-      0,
-      (sum, item) => sum + (item.price * item.quantity),
-    );
+    if (_basketData != null) {
+      return _parsePrice(_basketData!.subtotal);
+    }
+    return 0.0;
+  }
+
+  /// API'den gelen kargo ücreti
+  double get _shippingCost {
+    if (_basketData != null) {
+      return _parsePrice(_basketData!.cargoPrice);
+    }
+    return 0.0;
+  }
+
+  /// API'den gelen toplam fiyat
+  double get _totalPrice {
+    if (_basketData != null) {
+      return _parsePrice(_basketData!.grandTotal);
+    }
+    return 0.0;
+  }
+
+  /// API'den gelen indirim tutarı
+  double get _discountAmount {
+    if (_basketData != null) {
+      return _parsePrice(_basketData!.discountAmount);
+    }
+    return 0.0;
+  }
+
+  /// API'den gelen ücretsiz kargo limiti
+  double get _freeShippingLimit {
+    if (_basketData != null) {
+      return _parsePrice(_basketData!.cargoLimitPrice);
+    }
+    return 1000.0;
+  }
+
+  /// Ücretsiz kargoya kalan tutar
+  double get _remainingForFreeCargo {
+    if (_basketData != null) {
+      return _parsePrice(_basketData!.remainingForFreeCargo);
+    }
+    return _freeShippingLimit - _subtotal;
+  }
+
+  /// Toplam ürün sayısı
+  int get _totalItems {
+    if (_basketData != null) {
+      return _basketData!.totalItems;
+    }
+    return _cartItems.fold(0, (sum, item) => sum + item.cartQuantity);
   }
 
   double get _totalSavings {
-    return _cartItems.fold(0.0, (sum, item) {
-          if (item.oldPrice != null) {
-            return sum + ((item.oldPrice! - item.price) * item.quantity);
-          }
-          return sum;
-        }) +
-        _couponDiscount;
-  }
-
-  double get _shippingCost {
-    return _subtotal >= 500 ? 0 : 29.90;
-  }
-
-  double get _totalPrice {
-    return _subtotal + _shippingCost - _couponDiscount;
-  }
-
-  int get _totalItems {
-    return _cartItems.fold(0, (sum, item) => sum + item.quantity);
-  }
-
-  void _updateQuantity(CartItem item, int newQuantity) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      if (newQuantity <= 0) {
-        _showDeleteConfirmation(item);
-      } else if (newQuantity <= 10) {
-        item.quantity = newQuantity;
+    // API'den gelen indirim + kupon indirimi
+    double savings = _discountAmount + _couponDiscount;
+    // Ürün indirimlerini hesapla
+    for (var item in _cartItems) {
+      if (item.hasDiscount) {
+        double oldPrice = item.discountPriceAsDouble;
+        double newPrice = item.priceAsDouble;
+        if (oldPrice > newPrice) {
+          savings += (oldPrice - newPrice) * item.cartQuantity;
+        }
       }
-    });
+    }
+    return savings;
   }
 
-  void _removeItem(CartItem item) {
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _cartItems.removeWhere((i) => i.id == item.id);
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${item.title} sepetten kaldırıldı'),
-        backgroundColor: AppColors.textPrimary,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-        action: SnackBarAction(
-          label: 'Geri Al',
-          textColor: AppColors.primary,
-          onPressed: () {
-            setState(() {
-              _cartItems.add(item);
-            });
-          },
-        ),
-      ),
+  /// Fiyat string'ini double'a çevir
+  double _parsePrice(String priceStr) {
+    if (priceStr.isEmpty) return 0.0;
+    // "385,00 TL" -> 385.00
+    String cleaned = priceStr
+        .replaceAll('TL', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '.')
+        .trim();
+    return double.tryParse(cleaned) ?? 0.0;
+  }
+
+  /// Sepetteki ürün miktarını güncelle
+  void _updateQuantity(BasketItem item, int newQuantity) async {
+    HapticFeedback.lightImpact();
+    if (newQuantity <= 0) {
+      _showDeleteConfirmation(item);
+      return;
+    }
+
+    if (newQuantity > 10) return;
+
+    final response = await _basketService.updateBasket(
+      basketId: item.cartID,
+      quantity: newQuantity,
     );
+
+    if (response.success) {
+      // Sepeti yeniden yükle
+      await _loadBasket();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 18),
+                SizedBox(width: AppSpacing.sm),
+                Text('Miktar güncellendi'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } else {
+      // Hata durumunda eski haline döndür
+      await _loadBasket();
+      if (mounted) {
+        HapticFeedback.vibrate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 18),
+                SizedBox(width: AppSpacing.sm),
+                Text(response.message),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
   }
 
-  void _showDeleteConfirmation(CartItem item) {
+  /// Sepetten ürün sil
+  void _removeItem(BasketItem item) async {
+    HapticFeedback.mediumImpact();
+
+    final response = await _basketService.deleteFromBasket(
+      basketId: item.cartID,
+    );
+
+    if (response.success) {
+      // Sepeti yeniden yükle
+      await _loadBasket();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 18),
+                SizedBox(width: AppSpacing.sm),
+                Text('Ürün sepetten kaldırıldı'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        HapticFeedback.vibrate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 18),
+                SizedBox(width: AppSpacing.sm),
+                Text(response.message),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showDeleteConfirmation(BasketItem item) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -284,7 +412,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               Text('Ürünü Kaldır', style: AppTypography.h4),
               SizedBox(height: AppSpacing.sm),
               Text(
-                '${item.title} ürününü sepetinizden kaldırmak istediğinize emin misiniz?',
+                '${item.productTitle} ürününü sepetinizden kaldırmak istediğinize emin misiniz?',
                 style: AppTypography.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -409,14 +537,69 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(context);
                         HapticFeedback.mediumImpact();
-                        setState(() {
-                          _cartItems.clear();
-                          _appliedCoupon = null;
-                          _couponDiscount = 0;
-                        });
+
+                        // API'den sepeti temizle
+                        final response = await _basketService.clearBasket();
+
+                        if (response.success) {
+                          setState(() {
+                            _cartItems.clear();
+                            _basketData = null;
+                            _appliedCoupon = null;
+                            _couponDiscount = 0;
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: AppSpacing.sm),
+                                    Text('Sepet temizlendi'),
+                                  ],
+                                ),
+                                backgroundColor: AppColors.success,
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.all(AppSpacing.md),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                ),
+                              ),
+                            );
+                          }
+                        } else {
+                          if (mounted) {
+                            HapticFeedback.vibrate();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: AppSpacing.sm),
+                                    Text(response.message),
+                                  ],
+                                ),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                                margin: EdgeInsets.all(AppSpacing.md),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                ),
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.warning,
@@ -518,10 +701,33 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       backgroundColor: AppColors.background,
       body: !authService.isLoggedIn
           ? _buildLoginRequiredState()
+          : _isLoading
+          ? _buildLoadingState()
           : (_cartItems.isEmpty ? _buildEmptyState() : _buildCartContent()),
-      bottomNavigationBar: (authService.isLoggedIn && _cartItems.isNotEmpty)
+      bottomNavigationBar:
+          (authService.isLoggedIn && _cartItems.isNotEmpty && !_isLoading)
           ? _buildCheckoutBar()
           : null,
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return SafeArea(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: AppColors.primary),
+            SizedBox(height: AppSpacing.lg),
+            Text(
+              'Sepetiniz yükleniyor...',
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -840,8 +1046,10 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
   }
 
   Widget _buildShippingProgress() {
-    final progress = (_subtotal / 1000).clamp(0.0, 1.0);
-    final remaining = 1000 - _subtotal;
+    final isFreeShipping = _basketData?.isFreeShipping ?? false;
+    final remaining = _remainingForFreeCargo;
+    final limit = _freeShippingLimit;
+    final progress = limit > 0 ? ((_subtotal / limit).clamp(0.0, 1.0)) : 1.0;
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -853,7 +1061,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
         vertical: AppSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: remaining <= 0
+        color: isFreeShipping
             ? AppColors.success.withOpacity(0.08)
             : AppColors.primary.withOpacity(0.08),
         borderRadius: AppRadius.borderRadiusSM,
@@ -861,20 +1069,20 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       child: Row(
         children: [
           Icon(
-            remaining <= 0 ? Icons.check_circle : Icons.local_shipping_outlined,
-            color: remaining <= 0 ? AppColors.success : AppColors.primary,
+            isFreeShipping ? Icons.check_circle : Icons.local_shipping_outlined,
+            color: isFreeShipping ? AppColors.success : AppColors.primary,
             size: 18,
           ),
           SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              remaining <= 0
+              isFreeShipping
                   ? 'Kargo Bedava! 🎉'
                   : '₺${remaining.toStringAsFixed(0)} daha ekle, kargo bedava!',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
-                color: remaining <= 0 ? AppColors.success : AppColors.primary,
+                color: isFreeShipping ? AppColors.success : AppColors.primary,
               ),
             ),
           ),
@@ -891,7 +1099,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               widthFactor: progress,
               child: Container(
                 decoration: BoxDecoration(
-                  color: remaining <= 0 ? AppColors.success : AppColors.primary,
+                  color: isFreeShipping ? AppColors.success : AppColors.primary,
                   borderRadius: AppRadius.borderRadiusRound,
                 ),
               ),
@@ -973,7 +1181,21 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
           SizedBox(height: AppSpacing.sm),
 
           // Seçili Adres
-          if (_selectedAddress != null)
+          if (_isLoadingAddresses)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            )
+          else if (_selectedAddress != null)
             _buildSelectedAddressCard(_selectedAddress!)
           else
             _buildNoAddressState(),
@@ -982,7 +1204,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSelectedAddressCard(DeliveryAddress address) {
+  Widget _buildSelectedAddressCard(UserAddress address) {
     return Container(
       padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
@@ -1002,7 +1224,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               borderRadius: AppRadius.borderRadiusXS,
             ),
             child: Icon(
-              _getAddressIcon(address.title),
+              _getAddressIcon(address.addressTitle),
               color: AppColors.primary,
               size: 18,
             ),
@@ -1015,40 +1237,24 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               children: [
                 Row(
                   children: [
-                    Text(
-                      address.title,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                    Flexible(
+                      child: Text(
+                        address.addressTitle.isNotEmpty
+                            ? address.addressTitle
+                            : '${address.addressFirstName} ${address.addressLastName}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (address.isDefault) ...[
-                      SizedBox(width: AppSpacing.xs),
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withOpacity(0.1),
-                          borderRadius: AppRadius.borderRadiusXS,
-                        ),
-                        child: Text(
-                          'Varsayılan',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.success,
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 SizedBox(height: 2),
                 Text(
-                  address.fullAddress,
+                  address.address,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -1059,7 +1265,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  '${address.district}, ${address.city}',
+                  '${address.addressDistrict}, ${address.addressCity}',
                   style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                 ),
               ],
@@ -1225,7 +1431,16 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               Divider(height: 1, color: AppColors.divider),
               // Adres Listesi
               Flexible(
-                child: _addresses.isEmpty
+                child: _isLoadingAddresses
+                    ? Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(AppSpacing.xl),
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      )
+                    : _addresses.isEmpty
                     ? _buildEmptyAddressState()
                     : ListView.separated(
                         shrinkWrap: true,
@@ -1235,7 +1450,8 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                             SizedBox(height: AppSpacing.sm),
                         itemBuilder: (context, index) {
                           final address = _addresses[index];
-                          final isSelected = _selectedAddress?.id == address.id;
+                          final isSelected =
+                              _selectedAddress?.addressID == address.addressID;
                           return _buildAddressListItem(address, isSelected);
                         },
                       ),
@@ -1299,7 +1515,10 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAddressListItem(DeliveryAddress address, bool isSelected) {
+  Widget _buildAddressListItem(UserAddress address, bool isSelected) {
+    final title = address.addressTitle.isNotEmpty
+        ? address.addressTitle
+        : '${address.addressFirstName} ${address.addressLastName}';
     return InkWell(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -1313,7 +1532,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               children: [
                 Icon(Icons.check_circle, color: Colors.white, size: 18),
                 SizedBox(width: AppSpacing.sm),
-                Text('${address.title} adresi seçildi'),
+                Text('$title adresi seçildi'),
               ],
             ),
             backgroundColor: AppColors.success,
@@ -1380,7 +1599,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 borderRadius: AppRadius.borderRadiusXS,
               ),
               child: Icon(
-                _getAddressIcon(address.title),
+                _getAddressIcon(title),
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
                 size: 20,
               ),
@@ -1393,42 +1612,24 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        address.title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (address.isDefault) ...[
-                        SizedBox(width: AppSpacing.xs),
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.success.withOpacity(0.1),
-                            borderRadius: AppRadius.borderRadiusXS,
-                          ),
-                          child: Text(
-                            'Varsayılan',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                   SizedBox(height: 4),
                   Text(
-                    address.fullAddress,
+                    address.address,
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textSecondary,
@@ -1446,25 +1647,31 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         color: AppColors.textTertiary,
                       ),
                       SizedBox(width: 4),
-                      Text(
-                        '${address.district}, ${address.city}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textTertiary,
+                      Flexible(
+                        child: Text(
+                          '${address.addressDistrict}, ${address.addressCity}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textTertiary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      SizedBox(width: AppSpacing.md),
+                      SizedBox(width: AppSpacing.sm),
                       Icon(
                         Icons.phone_outlined,
                         size: 12,
                         color: AppColors.textTertiary,
                       ),
                       SizedBox(width: 4),
-                      Text(
-                        address.phone,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textTertiary,
+                      Flexible(
+                        child: Text(
+                          address.addressPhone,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textTertiary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -1486,17 +1693,15 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (context) => AddNewAddressSheet(
         onAddressAdded: (newAddress) {
-          setState(() {
-            _addresses.add(newAddress);
-            _selectedAddress = newAddress;
-          });
+          // Adresleri yeniden yükle
+          _loadAddresses();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white, size: 18),
                   SizedBox(width: AppSpacing.sm),
-                  Text('${newAddress.title} adresi başarıyla eklendi'),
+                  Text('Adres başarıyla eklendi'),
                 ],
               ),
               backgroundColor: AppColors.success,
@@ -1512,9 +1717,9 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildCartItemCard(CartItem item, int index) {
+  Widget _buildCartItemCard(BasketItem item, int index) {
     return Dismissible(
-      key: Key(item.id),
+      key: Key('${item.cartID}'),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -1527,10 +1732,28 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       ),
       confirmDismiss: (direction) async {
         HapticFeedback.mediumImpact();
-        return true;
+        // API'den sil
+        final response = await _basketService.deleteFromBasket(
+          basketId: item.cartID,
+        );
+        if (response.success) {
+          await _loadBasket();
+          return false; // Liste zaten güncellendi, dismissible'ın kendi animasyonuna gerek yok
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(response.message),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return false;
+        }
       },
       onDismissed: (direction) {
-        _removeItem(item);
+        // Artık kullanılmıyor, confirmDismiss içinde işlem yapılıyor
       },
       child: Container(
         decoration: BoxDecoration(
@@ -1553,19 +1776,12 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ),
                 child: ClipRRect(
                   borderRadius: AppRadius.borderRadiusXS,
-                  child: item.isAssetImage
-                      ? Image.asset(
-                          item.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _buildImagePlaceholder(),
-                        )
-                      : Image.network(
-                          item.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _buildImagePlaceholder(),
-                        ),
+                  child: Image.network(
+                    item.productImage,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        _buildImagePlaceholder(),
+                  ),
                 ),
               ),
               SizedBox(width: AppSpacing.sm),
@@ -1580,7 +1796,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       children: [
                         Expanded(
                           child: Text(
-                            item.title,
+                            item.productTitle,
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
@@ -1590,7 +1806,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (item.discount != null)
+                        if (item.hasDiscount)
                           Container(
                             padding: EdgeInsets.symmetric(
                               horizontal: 4,
@@ -1601,7 +1817,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                               borderRadius: AppRadius.borderRadiusXS,
                             ),
                             child: Text(
-                              '%${item.discount}',
+                              '${item.productDiscountIcon}${item.productDiscount}',
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
@@ -1612,9 +1828,9 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                       ],
                     ),
                     SizedBox(height: 2),
-                    // Gramaj
+                    // Birim Fiyat
                     Text(
-                      item.weight,
+                      item.productPrice,
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textTertiary,
@@ -1631,17 +1847,17 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '₺${(item.price * item.quantity).toStringAsFixed(2)}',
+                              item.totalPrice,
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primary,
                               ),
                             ),
-                            if (item.oldPrice != null) ...[
+                            if (item.hasDiscount) ...[
                               SizedBox(width: 4),
                               Text(
-                                '₺${(item.oldPrice! * item.quantity).toStringAsFixed(2)}',
+                                item.productPriceDiscount,
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textTertiary,
@@ -1676,7 +1892,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildQuantityControl(CartItem item) {
+  Widget _buildQuantityControl(BasketItem item) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.background,
@@ -1687,26 +1903,28 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildQuantityButton(
-            icon: item.quantity == 1 ? Icons.delete_outline : Icons.remove,
-            color: item.quantity == 1 ? AppColors.error : AppColors.textPrimary,
-            onTap: () => _updateQuantity(item, item.quantity - 1),
+            icon: item.cartQuantity == 1 ? Icons.delete_outline : Icons.remove,
+            color: item.cartQuantity == 1
+                ? AppColors.error
+                : AppColors.textPrimary,
+            onTap: () => _updateQuantity(item, item.cartQuantity - 1),
           ),
           Container(
             width: 28,
             alignment: Alignment.center,
             child: Text(
-              '${item.quantity}',
+              '${item.cartQuantity}',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
             ),
           ),
           _buildQuantityButton(
             icon: Icons.add,
-            color: item.quantity >= 10
+            color: item.cartQuantity >= 10
                 ? AppColors.textTertiary
                 : AppColors.primary,
-            onTap: item.quantity >= 10
+            onTap: item.cartQuantity >= 10
                 ? null
-                : () => _updateQuantity(item, item.quantity + 1),
+                : () => _updateQuantity(item, item.cartQuantity + 1),
           ),
         ],
       ),
@@ -1762,6 +1980,17 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   color: AppColors.textPrimary,
                 ),
               ),
+              if (_isLoadingCoupons) ...[
+                SizedBox(width: AppSpacing.sm),
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ],
             ],
           ),
           SizedBox(height: AppSpacing.sm),
@@ -1823,7 +2052,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
             Column(
               children: [
                 // Kuponlarım Dropdown
-                if (_userCoupons.isNotEmpty) ...[
+                if (_userCoupons.where((c) => c.isActive).isNotEmpty) ...[
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.background,
@@ -1854,16 +2083,19 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                           size: 18,
                         ),
                         title: Text(
-                          'Kuponlarım (${_userCoupons.length})',
+                          'Kuponlarım (${_userCoupons.where((c) => c.isActive).length})',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        children: _userCoupons.map((coupon) {
-                          final isDisabled =
-                              _subtotal < (coupon['minAmount'] as double);
+                        children: _userCoupons.where((c) => c.isActive).map((
+                          coupon,
+                        ) {
+                          final minAmount =
+                              double.tryParse(coupon.minBasketAmount) ?? 0;
+                          final isDisabled = _subtotal < minAmount;
                           return InkWell(
                             onTap: isDisabled
                                 ? null
@@ -1896,7 +2128,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                                       borderRadius: AppRadius.borderRadiusXS,
                                     ),
                                     child: Text(
-                                      coupon['code'] as String,
+                                      coupon.couponCode,
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.bold,
@@ -1913,7 +2145,9 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          coupon['description'] as String,
+                                          coupon.couponDesc.isNotEmpty
+                                              ? coupon.couponDesc
+                                              : coupon.discountDisplay,
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: isDisabled
@@ -1921,13 +2155,14 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                                                 : AppColors.textPrimary,
                                           ),
                                         ),
-                                        Text(
-                                          'Min. ₺${(coupon['minAmount'] as double).toStringAsFixed(0)} sepet tutarı',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            color: AppColors.textTertiary,
+                                        if (minAmount > 0)
+                                          Text(
+                                            'Min. ₺${minAmount.toStringAsFixed(0)} sepet tutarı',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: AppColors.textTertiary,
+                                            ),
                                           ),
-                                        ),
                                       ],
                                     ),
                                   ),
@@ -1975,7 +2210,8 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ],
 
                 // Manuel kupon girişi
-                if (_showManualCouponInput || _userCoupons.isEmpty)
+                if (_showManualCouponInput ||
+                    _userCoupons.where((c) => c.isActive).isEmpty)
                   Row(
                     children: [
                       Expanded(
@@ -2090,19 +2326,23 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     );
   }
 
-  void _selectCoupon(Map<String, dynamic> coupon) async {
+  void _selectCoupon(UserCoupon coupon) async {
     HapticFeedback.lightImpact();
     setState(() => _isApplyingCoupon = true);
 
     await Future.delayed(const Duration(milliseconds: 400));
 
-    final discountAmount = coupon['isPercentage'] as bool
-        ? _subtotal * (coupon['discount'] as double) / 100
-        : coupon['discount'] as double;
+    final isPercentage =
+        coupon.couponDiscountType == '%' ||
+        coupon.couponDiscountType == 'percentage';
+    final discountValue = coupon.couponDiscount;
+    final discountAmount = isPercentage
+        ? _subtotal * discountValue / 100
+        : discountValue;
 
     setState(() {
       _isApplyingCoupon = false;
-      _appliedCoupon = coupon['code'] as String;
+      _appliedCoupon = coupon.couponCode;
       _couponDiscount = discountAmount;
       _showManualCouponInput = false;
     });
@@ -2114,7 +2354,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
           children: [
             Icon(Icons.check_circle, color: Colors.white, size: 20),
             SizedBox(width: AppSpacing.sm),
-            Text('${coupon['description']} uygulandı!'),
+            Text('${coupon.discountDisplay} indirim uygulandı!'),
           ],
         ),
         backgroundColor: AppColors.success,
@@ -2126,6 +2366,8 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
   }
 
   Widget _buildOrderSummary() {
+    final isFreeShipping = _basketData?.isFreeShipping ?? false;
+
     return Container(
       margin: EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -2140,15 +2382,34 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSummaryRow('Ara Toplam', '₺${_subtotal.toStringAsFixed(2)}'),
+          _buildSummaryRow(
+            'Ara Toplam',
+            _basketData?.subtotal ?? '₺${_subtotal.toStringAsFixed(2)}',
+          ),
           SizedBox(height: AppSpacing.xs),
+          if (_basketData != null) ...[
+            _buildSummaryRow(
+              'KDV (${_basketData!.vatRate})',
+              _basketData!.vatAmount,
+            ),
+            SizedBox(height: AppSpacing.xs),
+          ],
           _buildSummaryRow(
             'Kargo',
-            _shippingCost == 0
+            isFreeShipping
                 ? 'Ücretsiz'
-                : '₺${_shippingCost.toStringAsFixed(2)}',
-            valueColor: _shippingCost == 0 ? AppColors.success : null,
+                : _basketData?.cargoPrice ??
+                      '₺${_shippingCost.toStringAsFixed(2)}',
+            valueColor: isFreeShipping ? AppColors.success : null,
           ),
+          if (_discountAmount > 0) ...[
+            SizedBox(height: AppSpacing.xs),
+            _buildSummaryRow(
+              'İndirim',
+              '-${_basketData?.discountAmount ?? '₺${_discountAmount.toStringAsFixed(2)}'}',
+              valueColor: AppColors.success,
+            ),
+          ],
           if (_couponDiscount > 0) ...[
             SizedBox(height: AppSpacing.xs),
             _buildSummaryRow(
@@ -2201,7 +2462,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               Text(
-                '₺${_totalPrice.toStringAsFixed(2)}',
+                _basketData?.grandTotal ?? '₺${_totalPrice.toStringAsFixed(2)}',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -2260,14 +2521,15 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Toplam',
+                  'Toplam ($_totalItems ürün)',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
                   ),
                 ),
                 Text(
-                  '₺${_totalPrice.toStringAsFixed(2)}',
+                  _basketData?.grandTotal ??
+                      '₺${_totalPrice.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
