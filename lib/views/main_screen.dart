@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../theme/app_theme.dart';
+import '../services/basket_service.dart';
+import '../services/auth_service.dart';
 import 'home_content.dart';
 import 'search_page.dart';
 import 'favorites_page.dart';
@@ -24,8 +26,11 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  int _cartBadgeCount = 3; // Bu değer sepet state'inden gelecek
+  int _cartBadgeCount = 0;
   bool _showBotBubble = true; // Konuşma balonu gösterilsin mi
+
+  final BasketService _basketService = BasketService();
+  final AuthService _authService = AuthService();
 
   // Sayfa key'leri - yenileme için
   final GlobalKey<_HomeContentRefreshable> _homeKey = GlobalKey();
@@ -34,12 +39,39 @@ class _MainScreenState extends State<MainScreen> {
   final GlobalKey<_CartPageRefreshable> _cartKey = GlobalKey();
   final GlobalKey<_ProfilePageRefreshable> _profileKey = GlobalKey();
 
+  @override
+  void initState() {
+    super.initState();
+    _loadCartBadgeCount();
+  }
+
+  /// Sepet badge sayısını yükle
+  Future<void> _loadCartBadgeCount() async {
+    if (!_authService.isLoggedIn) {
+      setState(() => _cartBadgeCount = 0);
+      return;
+    }
+
+    final response = await _basketService.getUserBaskets();
+    if (mounted &&
+        response != null &&
+        response.success &&
+        response.data != null) {
+      setState(() {
+        _cartBadgeCount = response.data!.totalItems;
+      });
+    }
+  }
+
   void _onTabTapped(int index) {
     // Aynı tab'a tıklanırsa veya farklı tab'a geçilirse yenile
     _refreshPage(index);
     setState(() {
       _currentIndex = index;
     });
+
+    // Sepet tab'ına geçildiğinde veya diğer tab'lardan çıkıldığında badge'i güncelle
+    _loadCartBadgeCount();
   }
 
   /// İlgili sayfayı yenile

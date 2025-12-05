@@ -127,7 +127,7 @@ class BasketService {
 
       _logger.d('📤 Update Basket Request: $body');
 
-      final result = await _networkService.post(
+      final result = await _networkService.put(
         ApiConstants.updateBasket,
         body: body,
       );
@@ -169,7 +169,7 @@ class BasketService {
 
       _logger.d('📤 Delete Basket Request: $body');
 
-      final result = await _networkService.post(
+      final result = await _networkService.delete(
         ApiConstants.deleteBasket,
         body: body,
       );
@@ -210,7 +210,7 @@ class BasketService {
 
       _logger.d('📤 Clear Basket Request: $body');
 
-      final result = await _networkService.post(
+      final result = await _networkService.delete(
         ApiConstants.clearBasket,
         body: body,
       );
