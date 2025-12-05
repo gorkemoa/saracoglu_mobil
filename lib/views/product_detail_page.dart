@@ -5,6 +5,7 @@ import '../widgets/product_card.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
 import '../services/favorite_service.dart';
+import '../services/basket_service.dart';
 import '../models/product/product_model.dart';
 
 /// Ürün Detay Sayfası
@@ -25,6 +26,7 @@ class ProductDetailPage extends StatefulWidget {
 class _ProductDetailPageState extends State<ProductDetailPage> {
   final ProductService _productService = ProductService();
   final FavoriteService _favoriteService = FavoriteService();
+  final BasketService _basketService = BasketService();
   final ScrollController _scrollController = ScrollController();
 
   // State
@@ -862,7 +864,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                   );
                 },
-                onAddToCart: () => _handleAddToCartSimilar(product.productName),
+                onAddToCart: () => _handleAddToCartSimilar(product),
                 onFavorite: () => _handleFavoriteSimilar(product.productName),
               );
             }).toList(),
@@ -1066,34 +1068,55 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
 
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                '$_quantity adet ${_product!.productName} sepete eklendi',
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-        action: SnackBarAction(
-          label: 'Sepete Git',
-          textColor: Colors.white,
-          onPressed: () {
-            // Sepet sayfasına git
-          },
-        ),
-      ),
+
+    final response = await _basketService.addToBasket(
+      productId: widget.productId,
+      quantity: _quantity,
     );
+
+    if (!mounted) return;
+
+    if (response != null && response.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: Text(response.message)),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+          action: SnackBarAction(
+            label: 'Sepete Git',
+            textColor: Colors.white,
+            onPressed: () {
+              // Sepet sayfasına git
+            },
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: Text(response?.message ?? 'Sepete eklenemedi')),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    }
   }
 
-  Future<void> _handleAddToCartSimilar(String productName) async {
+  Future<void> _handleAddToCartSimilar(ProductModel product) async {
     if (!await AuthGuard.checkAuth(
       context,
       message: 'Sepete eklemek için giriş yapın',
@@ -1102,21 +1125,46 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
 
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text('$productName sepete eklendi')),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
+
+    final response = await _basketService.addToBasket(
+      productId: product.productID,
     );
+
+    if (!mounted) return;
+
+    if (response != null && response.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text(response.message)),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text(response?.message ?? 'Sepete eklenemedi')),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    }
   }
 
   Future<void> _handleFavoriteSimilar(String productName) async {

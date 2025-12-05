@@ -6,6 +6,7 @@ import '../widgets/product_card.dart';
 import '../services/auth_service.dart';
 import '../services/product_service.dart';
 import '../services/favorite_service.dart';
+import '../services/basket_service.dart';
 import '../models/product/product_model.dart';
 import 'product_detail_page.dart';
 import 'all_products_page.dart';
@@ -27,6 +28,7 @@ class HomeContentState extends State<HomeContent> {
   // Product service
   final ProductService _productService = ProductService();
   final FavoriteService _favoriteService = FavoriteService();
+  final BasketService _basketService = BasketService();
 
   // Yeni ürünler state
   List<ProductModel> _newProducts = [];
@@ -118,7 +120,7 @@ class HomeContentState extends State<HomeContent> {
 
   Future<void> _handleAddToCart(
     BuildContext context,
-    String productName,
+    ProductModel product,
   ) async {
     if (!await AuthGuard.checkAuth(
       context,
@@ -130,21 +132,45 @@ class HomeContentState extends State<HomeContent> {
     HapticFeedback.mediumImpact();
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text('$productName sepete eklendi')),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
+    final response = await _basketService.addToBasket(
+      productId: product.productID,
     );
+
+    if (!context.mounted) return;
+
+    if (response != null && response.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text(response.message)),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text(response?.message ?? 'Sepete eklenemedi')),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    }
   }
 
   Future<void> _handleFavorite(
@@ -732,8 +758,7 @@ class HomeContentState extends State<HomeContent> {
                       isFavorite: product.isFavorite,
                       onTap: () =>
                           _navigateToProductDetail(context, product: product),
-                      onAddToCart: () =>
-                          _handleAddToCart(context, product.productName),
+                      onAddToCart: () => _handleAddToCart(context, product),
                       onFavorite: () => _handleFavorite(context, product),
                     ),
                   )
@@ -840,8 +865,7 @@ class HomeContentState extends State<HomeContent> {
                       isFavorite: product.isFavorite,
                       onTap: () =>
                           _navigateToProductDetail(context, product: product),
-                      onAddToCart: () =>
-                          _handleAddToCart(context, product.productName),
+                      onAddToCart: () => _handleAddToCart(context, product),
                       onFavorite: () => _handleFavorite(context, product),
                     ),
                   )

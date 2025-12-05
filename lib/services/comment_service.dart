@@ -1,0 +1,53 @@
+import 'package:logger/logger.dart';
+import '../core/constants/api_constants.dart';
+import '../models/comment/user_comment_model.dart';
+import 'network_service.dart';
+import 'auth_service.dart';
+
+/// Yorum Servisi
+/// Kullanıcının yorumlarını yönetir
+class CommentService {
+  static final CommentService _instance = CommentService._internal();
+  factory CommentService() => _instance;
+  CommentService._internal();
+
+  final NetworkService _networkService = NetworkService();
+  final AuthService _authService = AuthService();
+  final Logger _logger = Logger();
+
+  /// User token'ı AuthService'den al
+  String get _userToken => _authService.token ?? '';
+
+  /// Kullanıcının yorumlarını getir
+  Future<UserCommentsResponse?> getUserComments() async {
+    try {
+      if (_userToken.isEmpty) {
+        _logger.w('⚠️ Yorumlar için giriş yapılmalı');
+        return null;
+      }
+
+      final endpoint = '${ApiConstants.getUserComments}?userToken=$_userToken';
+
+      _logger.d('📤 Request URL: $endpoint');
+
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = UserCommentsResponse.fromJson(result.data!);
+        if (response.success) {
+          _logger.i('✅ Yorumlar getirildi: ${response.totalItems} yorum');
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ Yorumlar getirilemedi: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ Yorumlar getirme hatası', error: e);
+      return null;
+    }
+  }
+}

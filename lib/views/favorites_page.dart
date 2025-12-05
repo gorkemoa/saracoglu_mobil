@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/favorite_service.dart';
+import '../services/basket_service.dart';
 import '../models/favorite/favorite_model.dart';
 import 'auth/login_page.dart';
 import 'product_detail_page.dart';
@@ -18,6 +19,7 @@ class FavoritesPageState extends State<FavoritesPage>
     with TickerProviderStateMixin {
   final FavoriteService _favoriteService = FavoriteService();
   final AuthService _authService = AuthService();
+  final BasketService _basketService = BasketService();
 
   List<FavoriteProduct> _favorites = [];
   bool _isLoading = false;
@@ -365,30 +367,55 @@ class FavoritesPageState extends State<FavoritesPage>
     }
   }
 
-  void _addToCart(FavoriteProduct item) {
+  Future<void> _addToCart(FavoriteProduct item) async {
     HapticFeedback.heavyImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text('${item.productName} sepete eklendi')),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-        action: SnackBarAction(
-          label: 'Sepete Git',
-          textColor: Colors.white,
-          onPressed: () {
-            // Sepete yönlendir
-          },
-        ),
-      ),
+
+    final response = await _basketService.addToBasket(
+      productId: item.productID,
     );
+
+    if (!mounted) return;
+
+    if (response != null && response.success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 20),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(child: Text(response.message)),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+          action: SnackBarAction(
+            label: 'Sepete Git',
+            textColor: Colors.white,
+            onPressed: () {
+              // Sepete yönlendir
+            },
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white, size: 20),
+              SizedBox(width: AppSpacing.sm),
+              Expanded(child: Text(response?.message ?? 'Sepete eklenemedi')),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+    }
   }
 
   void _navigateToProductDetail(FavoriteProduct item) {

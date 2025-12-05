@@ -15,6 +15,7 @@ import 'profile/change_password_page.dart';
 import 'profile/help_support_page.dart';
 import 'profile/legal_info_page.dart';
 import 'profile/about_page.dart';
+import 'profile/my_reviews_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -301,6 +302,7 @@ class ProfilePageState extends State<ProfilePage> {
     }
 
     if (mounted) {
+      // ignore: use_build_context_synchronously
       Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     }
   }
@@ -406,6 +408,15 @@ class ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 _MenuItem(
+                  icon: Icons.rate_review_outlined,
+                  title: 'Değerlendirmelerim',
+                  onTap: () => _navigateWithAuthCheck(
+                    context,
+                    const MyReviewsPage(),
+                    'Değerlendirmelerinizi görmek için giriş yapın',
+                  ),
+                ),
+                _MenuItem(
                   icon: Icons.lock_outline,
                   title: 'Şifre Değiştir',
                   onTap: () => _navigateWithAuthCheck(
@@ -506,6 +517,7 @@ class ProfilePageState extends State<ProfilePage> {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
+                // ignore: deprecated_member_use
                 color: AppColors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
@@ -596,7 +608,9 @@ class ProfilePageState extends State<ProfilePage> {
                         ),
                         decoration: BoxDecoration(
                           color: user.isApproved!
+                              // ignore: deprecated_member_use
                               ? AppColors.success.withOpacity(0.1)
+                              // ignore: deprecated_member_use
                               : AppColors.warning.withOpacity(0.1),
                           borderRadius: AppRadius.borderRadiusSM,
                         ),
