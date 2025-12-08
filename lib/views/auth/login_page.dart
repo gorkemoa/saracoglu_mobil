@@ -3,13 +3,19 @@ import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../services/auth_service.dart';
+import '../main_screen.dart';
 import 'register_page.dart';
 import 'code_verification_page.dart';
 
 class LoginPage extends StatefulWidget {
   final String? redirectMessage;
+  final bool fromSessionExpired;
 
-  const LoginPage({super.key, this.redirectMessage});
+  const LoginPage({
+    super.key,
+    this.redirectMessage,
+    this.fromSessionExpired = false,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -53,7 +59,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login() async {
     // Boş alan kontrolü
-    if (_usernameController.text.trim().isEmpty || 
+    if (_usernameController.text.trim().isEmpty ||
         _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -61,9 +67,7 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
         ),
       );
       return;
@@ -83,7 +87,16 @@ class _LoginPageState extends State<LoginPage> {
 
     if (success && mounted) {
       HapticFeedback.heavyImpact();
-      Navigator.pop(context, true);
+
+      // Oturum süresi dolmuşsa MainScreen'e yönlendir, değilse pop yap
+      if (widget.fromSessionExpired) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+          (route) => false,
+        );
+      } else {
+        Navigator.pop(context, true);
+      }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -91,9 +104,7 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
         ),
       );
     }
@@ -188,7 +199,10 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                      borderSide: BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
@@ -231,12 +245,18 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.primary, width: 2),
+                      borderSide: BorderSide(
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                     suffixIcon: IconButton(
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
                         color: AppColors.textSecondary,
                         size: 22,
                       ),
@@ -281,7 +301,9 @@ class _LoginPageState extends State<LoginPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.borderRadiusMD,
                       ),
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                      disabledBackgroundColor: AppColors.primary.withOpacity(
+                        0.6,
+                      ),
                     ),
                     child: _isLoading
                         ? SizedBox(
@@ -289,7 +311,9 @@ class _LoginPageState extends State<LoginPage> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : Text(
@@ -323,7 +347,7 @@ class _LoginPageState extends State<LoginPage> {
                               builder: (context) => const RegisterPage(),
                             ),
                           );
-                          
+
                           if (result == true && mounted) {
                             // Kayıt başarılı, login sayfasını da kapat
                             Navigator.pop(context, true);
@@ -361,12 +385,16 @@ class _LoginPageState extends State<LoginPage> {
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: Container(
             padding: EdgeInsets.all(AppSpacing.xl),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.xl),
+              ),
             ),
             child: SafeArea(
               child: Column(
@@ -385,10 +413,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   SizedBox(height: AppSpacing.xl),
 
-                  Text(
-                    'Şifre Sıfırlama',
-                    style: AppTypography.h3,
-                  ),
+                  Text('Şifre Sıfırlama', style: AppTypography.h3),
                   SizedBox(height: AppSpacing.sm),
                   Text(
                     'E-posta adresinizi girin, şifre sıfırlama doğrulama kodu göndereceğiz.',
@@ -424,7 +449,10 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: AppRadius.borderRadiusMD,
-                        borderSide: BorderSide(color: AppColors.primary, width: 2),
+                        borderSide: BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -435,96 +463,110 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: isLoading ? null : () async {
-                        if (emailController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Lütfen e-posta adresinizi girin'),
-                              backgroundColor: AppColors.warning,
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.all(AppSpacing.md),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.borderRadiusSM,
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        setModalState(() => isLoading = true);
-
-                        final response = await authService.forgotPassword(
-                          emailController.text.trim(),
-                        );
-
-                        setModalState(() => isLoading = false);
-
-                        if (response.isSuccess && context.mounted) {
-                          // Bottom sheet'i kapat
-                          Navigator.pop(context);
-                          
-                          // Kapat sonra mesaj göster
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(response.message ?? 'Doğrulama kodu gönderildi'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                                margin: EdgeInsets.all(AppSpacing.md),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadius.borderRadiusSM,
-                                ),
-                              ),
-                            );
-                          }
-                          
-                          // Doğrulama sayfasına yönlendir
-                          if (mounted) {
-                            final verified = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => CodeVerificationPage(
-                                  email: emailController.text.trim(),
-                                  verificationType: VerificationType.forgotPassword,
-                                ),
-                              ),
-                            );
-
-                            if (verified == true && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Text('Şifreniz sıfırlandı. Yeni şifreniz e-posta adresinize gönderildi.'),
-                                  backgroundColor: AppColors.success,
-                                  behavior: SnackBarBehavior.floating,
-                                  margin: EdgeInsets.all(AppSpacing.md),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: AppRadius.borderRadiusSM,
+                      onPressed: isLoading
+                          ? null
+                          : () async {
+                              if (emailController.text.trim().isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'Lütfen e-posta adresinizi girin',
+                                    ),
+                                    backgroundColor: AppColors.warning,
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: EdgeInsets.all(AppSpacing.md),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: AppRadius.borderRadiusSM,
+                                    ),
                                   ),
-                                ),
+                                );
+                                return;
+                              }
+
+                              setModalState(() => isLoading = true);
+
+                              final response = await authService.forgotPassword(
+                                emailController.text.trim(),
                               );
-                            }
-                          }
-                        } else if (context.mounted) {
-                          // API'den gelen hata mesajını göster (417, 400 vs.)
-                          // Bottom sheet'i kapat
-                          Navigator.pop(context);
-                          
-                          // Kapat sonra mesaj göster
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(response.message ?? 'İşlem başarısız'),
-                                backgroundColor: AppColors.error,
-                                behavior: SnackBarBehavior.floating,
-                                margin: EdgeInsets.all(AppSpacing.md),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadius.borderRadiusSM,
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
+
+                              setModalState(() => isLoading = false);
+
+                              if (response.isSuccess && context.mounted) {
+                                // Bottom sheet'i kapat
+                                Navigator.pop(context);
+
+                                // Kapat sonra mesaj göster
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        response.message ??
+                                            'Doğrulama kodu gönderildi',
+                                      ),
+                                      backgroundColor: AppColors.success,
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: EdgeInsets.all(AppSpacing.md),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: AppRadius.borderRadiusSM,
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                // Doğrulama sayfasına yönlendir
+                                if (mounted) {
+                                  final verified = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          CodeVerificationPage(
+                                            email: emailController.text.trim(),
+                                            verificationType:
+                                                VerificationType.forgotPassword,
+                                          ),
+                                    ),
+                                  );
+
+                                  if (verified == true && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text(
+                                          'Şifreniz sıfırlandı. Yeni şifreniz e-posta adresinize gönderildi.',
+                                        ),
+                                        backgroundColor: AppColors.success,
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: EdgeInsets.all(AppSpacing.md),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              AppRadius.borderRadiusSM,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              } else if (context.mounted) {
+                                // API'den gelen hata mesajını göster (417, 400 vs.)
+                                // Bottom sheet'i kapat
+                                Navigator.pop(context);
+
+                                // Kapat sonra mesaj göster
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        response.message ?? 'İşlem başarısız',
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: EdgeInsets.all(AppSpacing.md),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: AppRadius.borderRadiusSM,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -532,7 +574,9 @@ class _LoginPageState extends State<LoginPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: AppRadius.borderRadiusMD,
                         ),
-                        disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                        disabledBackgroundColor: AppColors.primary.withOpacity(
+                          0.6,
+                        ),
                       ),
                       child: isLoading
                           ? SizedBox(
@@ -540,12 +584,16 @@ class _LoginPageState extends State<LoginPage> {
                               width: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
                               ),
                             )
                           : Text(
                               'Gönder',
-                              style: AppTypography.buttonMedium.copyWith(color: Colors.white),
+                              style: AppTypography.buttonMedium.copyWith(
+                                color: Colors.white,
+                              ),
                             ),
                     ),
                   ),

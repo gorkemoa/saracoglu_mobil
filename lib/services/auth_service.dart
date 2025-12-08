@@ -36,12 +36,11 @@ class AuthService extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isLoading = false;
   bool _isInitialized = false;
-  
+
   // Register için geçici token'lar
   String? _pendingCodeToken;
   int? _pendingUserId;
-  String? _pendingUserToken;
-  
+
   // 403 hatası için global context (Navigator için)
   static GlobalKey<NavigatorState>? navigatorKey;
 
@@ -78,6 +77,7 @@ class AuthService extends ChangeNotifier {
         MaterialPageRoute(
           builder: (_) => const LoginPage(
             redirectMessage: 'Oturum süreniz doldu. Lütfen tekrar giriş yapın.',
+            fromSessionExpired: true,
           ),
         ),
         (route) => false,
@@ -98,10 +98,7 @@ class AuthService extends ChangeNotifier {
       _networkService.setAuthToken(storedToken);
 
       // Geçici kullanıcı modeli oluştur
-      _currentUser = UserModel(
-        id: storedUserId,
-        token: storedToken,
-      );
+      _currentUser = UserModel(id: storedUserId, token: storedToken);
 
       // Kullanıcı bilgilerini API'den getir (arka planda)
       getUser(storedUserId);
@@ -194,7 +191,6 @@ class AuthService extends ChangeNotifier {
     _currentUser = null;
     _pendingCodeToken = null;
     _pendingUserId = null;
-    _pendingUserToken = null;
     _networkService.clearAuthToken();
     notifyListeners();
   }
@@ -219,7 +215,6 @@ class AuthService extends ChangeNotifier {
           // codeToken ve userToken'ı kaydet (doğrulama için)
           _pendingCodeToken = response.data!.codeToken;
           _pendingUserId = response.data!.userID;
-          _pendingUserToken = response.data!.userToken;
         }
 
         notifyListeners();
@@ -276,15 +271,12 @@ class AuthService extends ChangeNotifier {
         if (response.isSuccess && response.data != null) {
           // passToken == userToken, kullanıcıyı giriş yaptır
           final userToken = response.data!.passToken;
-          
+
           // Token'ı network service'e kaydet
           _networkService.setAuthToken(userToken);
 
           // Kullanıcı modelini oluştur
-          _currentUser = UserModel(
-            id: _pendingUserId!,
-            token: userToken,
-          );
+          _currentUser = UserModel(id: _pendingUserId!, token: userToken);
 
           // Credentials'ı kaydet (kalıcı oturum)
           await _saveCredentials(_pendingUserId!, userToken);
@@ -292,7 +284,6 @@ class AuthService extends ChangeNotifier {
           // Geçici token'ları temizle
           _pendingCodeToken = null;
           _pendingUserId = null;
-          _pendingUserToken = null;
 
           notifyListeners();
         }
@@ -323,7 +314,9 @@ class AuthService extends ChangeNotifier {
 
   /// Doğrulama kodu gönder (giriş yapmış kullanıcılar için)
   /// sendType: 1 = SMS, 2 = E-posta
-  Future<SendVerificationCodeResponse> sendVerificationCode(int sendType) async {
+  Future<SendVerificationCodeResponse> sendVerificationCode(
+    int sendType,
+  ) async {
     if (_currentUser == null) {
       return SendVerificationCodeResponse(
         error: true,
@@ -355,7 +348,6 @@ class AuthService extends ChangeNotifier {
           // codeToken'ı kaydet (doğrulama için)
           _pendingCodeToken = response.data!.codeToken;
           _pendingUserId = _currentUser!.id;
-          _pendingUserToken = _currentUser!.token;
         }
 
         notifyListeners();
@@ -418,7 +410,6 @@ class AuthService extends ChangeNotifier {
           // Geçici token'ları temizle
           _pendingCodeToken = null;
           _pendingUserId = null;
-          _pendingUserToken = null;
 
           notifyListeners();
         }
@@ -523,7 +514,6 @@ class AuthService extends ChangeNotifier {
           // Geçici token'ları temizle
           _pendingCodeToken = null;
           _pendingUserId = null;
-          _pendingUserToken = null;
         }
 
         notifyListeners();
@@ -547,7 +537,6 @@ class AuthService extends ChangeNotifier {
       );
     }
   }
-
 
   /// Kullanıcı bilgilerini getir (getUser - PUT)
   /// userId: Login'den gelen kullanıcı ID'si
@@ -583,28 +572,23 @@ class AuthService extends ChangeNotifier {
         return response;
       } else {
         notifyListeners();
-        return GetUserResponse(
-          error: true,
-          success: false,
-          user: null,
-        );
+        return GetUserResponse(error: true, success: false, user: null);
       }
     } catch (e) {
       _isLoading = false;
       notifyListeners();
 
-      return GetUserResponse(
-        error: true,
-        success: false,
-        user: null,
-      );
+      return GetUserResponse(error: true, success: false, user: null);
     }
   }
 
   /// Kullanıcı bilgilerini güncelle (updateUser - PUT)
   /// userId: Kullanıcı ID'si
   /// request: Güncellenecek bilgiler
-  Future<UpdateUserResponse> updateUserInfo(int userId, UpdateUserRequest request) async {
+  Future<UpdateUserResponse> updateUserInfo(
+    int userId,
+    UpdateUserRequest request,
+  ) async {
     _isLoading = true;
     notifyListeners();
 
@@ -654,7 +638,9 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Şifre güncelle
-  Future<UpdatePasswordResponse> updatePassword(UpdatePasswordRequest request) async {
+  Future<UpdatePasswordResponse> updatePassword(
+    UpdatePasswordRequest request,
+  ) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -670,7 +656,9 @@ class AuthService extends ChangeNotifier {
       if (result.isSuccess && result.data != null) {
         return UpdatePasswordResponse.fromJson(result.data!);
       } else {
-        return UpdatePasswordResponse.error(result.errorMessage ?? 'Şifre güncellenirken bir hata oluştu');
+        return UpdatePasswordResponse.error(
+          result.errorMessage ?? 'Şifre güncellenirken bir hata oluştu',
+        );
       }
     } catch (e) {
       _isLoading = false;
@@ -710,7 +698,9 @@ class AuthService extends ChangeNotifier {
         return response;
       } else {
         notifyListeners();
-        return DeleteUserResponse.error(result.errorMessage ?? 'Hesap silinirken bir hata oluştu');
+        return DeleteUserResponse.error(
+          result.errorMessage ?? 'Hesap silinirken bir hata oluştu',
+        );
       }
     } catch (e) {
       _isLoading = false;
@@ -724,10 +714,7 @@ class AuthService extends ChangeNotifier {
 class AuthGuard {
   /// Kullanıcı giriş yapmış mı kontrol et
   /// Giriş yapmamışsa LoginPage'e yönlendir
-  static Future<bool> checkAuth(
-    BuildContext context, {
-    String? message,
-  }) async {
+  static Future<bool> checkAuth(BuildContext context, {String? message}) async {
     final authService = AuthService();
 
     if (!authService.isLoggedIn) {
@@ -735,7 +722,8 @@ class AuthGuard {
         context,
         MaterialPageRoute(
           builder: (context) => LoginPage(
-            redirectMessage: message ?? 'Bu işlem için giriş yapmanız gerekiyor',
+            redirectMessage:
+                message ?? 'Bu işlem için giriş yapmanız gerekiyor',
           ),
         ),
       );
@@ -762,7 +750,9 @@ class AuthGuard {
               const Icon(Icons.info_outline, color: Colors.white, size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(message ?? 'Bu işlem için giriş yapmanız gerekiyor'),
+                child: Text(
+                  message ?? 'Bu işlem için giriş yapmanız gerekiyor',
+                ),
               ),
             ],
           ),

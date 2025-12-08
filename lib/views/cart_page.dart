@@ -38,7 +38,6 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
   bool _isLoadingCoupons = false;
 
   String? _appliedCoupon;
-  double _couponDiscount = 0;
   final TextEditingController _couponController = TextEditingController();
   bool _isApplyingCoupon = false;
   bool _showManualCouponInput = false;
@@ -176,36 +175,12 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     return 0.0;
   }
 
-  /// API'den gelen kargo ücreti
-  double get _shippingCost {
-    if (_basketData != null) {
-      return _parsePrice(_basketData!.cargoPrice);
-    }
-    return 0.0;
-  }
-
-  /// API'den gelen toplam fiyat
-  double get _totalPrice {
-    if (_basketData != null) {
-      return _parsePrice(_basketData!.grandTotal);
-    }
-    return 0.0;
-  }
-
-  /// API'den gelen indirim tutarı
-  double get _discountAmount {
-    if (_basketData != null) {
-      return _parsePrice(_basketData!.discountAmount);
-    }
-    return 0.0;
-  }
-
   /// API'den gelen ücretsiz kargo limiti
   double get _freeShippingLimit {
     if (_basketData != null) {
       return _parsePrice(_basketData!.cargoLimitPrice);
     }
-    return 1000.0;
+    return 0.0;
   }
 
   /// Ücretsiz kargoya kalan tutar
@@ -213,31 +188,15 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     if (_basketData != null) {
       return _parsePrice(_basketData!.remainingForFreeCargo);
     }
-    return _freeShippingLimit - _subtotal;
+    return 0.0;
   }
 
-  /// Toplam ürün sayısı
+  /// Toplam ürün adedi (sepetteki tüm ürünlerin miktarlarının toplamı)
   int get _totalItems {
-    if (_basketData != null) {
-      return _basketData!.totalItems;
-    }
+    // API'den gelen totalItems yerine, sepetteki ürünlerin cartQuantity değerlerinin toplamını hesapla
+    // Bu sayede 1 üründen 8 adet seçildiğinde "8 ürün" görünür
+    if (_cartItems.isEmpty) return 0;
     return _cartItems.fold(0, (sum, item) => sum + item.cartQuantity);
-  }
-
-  double get _totalSavings {
-    // API'den gelen indirim + kupon indirimi
-    double savings = _discountAmount + _couponDiscount;
-    // Ürün indirimlerini hesapla
-    for (var item in _cartItems) {
-      if (item.hasDiscount) {
-        double oldPrice = item.discountPriceAsDouble;
-        double newPrice = item.priceAsDouble;
-        if (oldPrice > newPrice) {
-          savings += (oldPrice - newPrice) * item.cartQuantity;
-        }
-      }
-    }
-    return savings;
   }
 
   /// Fiyat string'ini double'a çevir
@@ -549,7 +508,6 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                             _cartItems.clear();
                             _basketData = null;
                             _appliedCoupon = null;
-                            _couponDiscount = 0;
                           });
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -624,33 +582,38 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     if (_couponController.text.isEmpty) return;
 
     setState(() => _isApplyingCoupon = true);
+    HapticFeedback.lightImpact();
 
-    // Simüle edilmiş API çağrısı
-    await Future.delayed(const Duration(milliseconds: 800));
+    final code = _couponController.text.trim();
+    final response = await _couponService.useCoupon(code);
 
-    // Demo kupon kodları
-    final coupons = {
-      'HOSGELDIN': 50.0,
-      'INDIRIM10': _subtotal * 0.10,
-      'SARACOGLU': 100.0,
-    };
+    setState(() => _isApplyingCoupon = false);
 
-    final code = _couponController.text.toUpperCase();
+    if (response.success) {
+      // Başarılı - Sepeti yeniden yükle (indirim uygulanmış haliyle)
+      await _loadBasket();
 
-    setState(() {
-      _isApplyingCoupon = false;
-      if (coupons.containsKey(code)) {
+      setState(() {
         _appliedCoupon = code;
-        _couponDiscount = coupons[code]!;
         _couponController.clear();
-        HapticFeedback.heavyImpact();
+        _showManualCouponInput = false;
+      });
+
+      HapticFeedback.heavyImpact();
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(Icons.check_circle, color: Colors.white, size: 20),
                 SizedBox(width: AppSpacing.sm),
-                Text('Kupon kodu başarıyla uygulandı!'),
+                Expanded(
+                  child: Text(
+                    response.message.isNotEmpty
+                        ? response.message
+                        : 'Kupon kodu başarıyla uygulandı!',
+                  ),
+                ),
               ],
             ),
             backgroundColor: AppColors.success,
@@ -661,15 +624,25 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
             ),
           ),
         );
-      } else {
-        HapticFeedback.vibrate();
+      }
+    } else {
+      HapticFeedback.vibrate();
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
                 Icon(Icons.error_outline, color: Colors.white, size: 20),
                 SizedBox(width: AppSpacing.sm),
-                Text('Geçersiz kupon kodu'),
+                Expanded(
+                  child: Text(
+                    response.message.isNotEmpty
+                        ? response.message
+                        : 'Geçersiz kupon kodu',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             backgroundColor: AppColors.error,
@@ -681,16 +654,17 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
           ),
         );
       }
-    });
+    }
   }
 
   void _removeCoupon() {
     HapticFeedback.lightImpact();
     setState(() {
       _appliedCoupon = null;
-      _couponDiscount = 0;
       _showManualCouponInput = false;
     });
+    // Sepeti yeniden yükle (kupon kaldırıldığında)
+    _loadBasket();
   }
 
   @override
@@ -2024,7 +1998,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                           ),
                         ),
                         Text(
-                          '₺${_couponDiscount.toStringAsFixed(0)} indirim uygulandı',
+                          '₺${_basketData?.discountAmount ?? '0'} indirim uygulandı',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppColors.success,
@@ -2330,39 +2304,69 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
     HapticFeedback.lightImpact();
     setState(() => _isApplyingCoupon = true);
 
-    await Future.delayed(const Duration(milliseconds: 400));
+    final response = await _couponService.useCoupon(coupon.couponCode);
 
-    final isPercentage =
-        coupon.couponDiscountType == '%' ||
-        coupon.couponDiscountType == 'percentage';
-    final discountValue = coupon.couponDiscount;
-    final discountAmount = isPercentage
-        ? _subtotal * discountValue / 100
-        : discountValue;
+    setState(() => _isApplyingCoupon = false);
 
-    setState(() {
-      _isApplyingCoupon = false;
-      _appliedCoupon = coupon.couponCode;
-      _couponDiscount = discountAmount;
-      _showManualCouponInput = false;
-    });
+    if (response.success) {
+      // Başarılı - Sepeti yeniden yükle (indirim uygulanmış haliyle)
+      await _loadBasket();
 
-    HapticFeedback.heavyImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 20),
-            SizedBox(width: AppSpacing.sm),
-            Text('${coupon.discountDisplay} indirim uygulandı!'),
-          ],
-        ),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
-    );
+      setState(() {
+        _appliedCoupon = coupon.couponCode;
+        _showManualCouponInput = false;
+      });
+
+      HapticFeedback.heavyImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 20),
+                SizedBox(width: AppSpacing.sm),
+                Text('${coupon.discountDisplay} indirim uygulandı!'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    } else {
+      HapticFeedback.vibrate();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 20),
+                SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    response.message.isNotEmpty
+                        ? response.message
+                        : 'Kupon uygulanamadı',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildOrderSummary() {
@@ -2382,10 +2386,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSummaryRow(
-            'Ara Toplam',
-            _basketData?.subtotal ?? '₺${_subtotal.toStringAsFixed(2)}',
-          ),
+          _buildSummaryRow('Ara Toplam', _basketData?.subtotal ?? ''),
           SizedBox(height: AppSpacing.xs),
           if (_basketData != null) ...[
             _buildSummaryRow(
@@ -2396,29 +2397,29 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
           ],
           _buildSummaryRow(
             'Kargo',
-            isFreeShipping
-                ? 'Ücretsiz'
-                : _basketData?.cargoPrice ??
-                      '₺${_shippingCost.toStringAsFixed(2)}',
+            isFreeShipping ? 'Ücretsiz' : (_basketData?.cargoPrice ?? ''),
             valueColor: isFreeShipping ? AppColors.success : null,
           ),
-          if (_discountAmount > 0) ...[
+          if (_basketData != null &&
+              _parsePrice(_basketData!.discountAmount) > 0) ...[
             SizedBox(height: AppSpacing.xs),
             _buildSummaryRow(
               'İndirim',
-              '-${_basketData?.discountAmount ?? '₺${_discountAmount.toStringAsFixed(2)}'}',
+              '-${_basketData!.discountAmount}',
               valueColor: AppColors.success,
             ),
           ],
-          if (_couponDiscount > 0) ...[
+          // Kupon indirimi API'den discountAmount içinde geliyor, ayrıca göstermeye gerek yok
+          /*if (_couponDiscount > 0) ...[
             SizedBox(height: AppSpacing.xs),
             _buildSummaryRow(
               'Kupon',
-              '-₺${_couponDiscount.toStringAsFixed(2)}',
+              '',
               valueColor: AppColors.success,
             ),
-          ],
-          if (_totalSavings > 0) ...[
+          ],*/
+          // Tasarruf bilgisi API'den gelmiyorsa gösterme
+          /*if (_totalSavings > 0) ...[
             SizedBox(height: AppSpacing.xs),
             Container(
               padding: EdgeInsets.symmetric(
@@ -2439,7 +2440,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   ),
                   SizedBox(width: 4),
                   Text(
-                    '₺${_totalSavings.toStringAsFixed(2)} tasarruf',
+                    'tasarruf',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
@@ -2449,7 +2450,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 ],
               ),
             ),
-          ],
+          ],*/
           Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
             child: Divider(color: AppColors.divider, height: 1),
@@ -2462,7 +2463,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
               ),
               Text(
-                _basketData?.grandTotal ?? '₺${_totalPrice.toStringAsFixed(2)}',
+                _basketData?.grandTotal ?? '',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -2528,8 +2529,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                   ),
                 ),
                 Text(
-                  _basketData?.grandTotal ??
-                      '₺${_totalPrice.toStringAsFixed(2)}',
+                  _basketData?.grandTotal ?? '',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,

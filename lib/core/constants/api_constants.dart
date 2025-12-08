@@ -45,6 +45,7 @@ class ApiConstants {
 
   /// Coupon Endpoints
   static const String getUserCoupons = 'service/user/account/coupon/list';
+  static const String useCoupon = 'service/user/account/coupon/use';
 
   /// Location Endpoints
   static const String getCities = 'service/general/general/cities/all';

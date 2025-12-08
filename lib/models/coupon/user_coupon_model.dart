@@ -107,3 +107,27 @@ class UserCouponsResponse {
     );
   }
 }
+
+/// Kupon kullanma response modeli
+/// API Response: {"error": false, "success": true, "data": "337,50 TL indirim uygulanmıştır.", "200": "OK"}
+class UseCouponResponse {
+  final bool success;
+  final String message;
+
+  UseCouponResponse({required this.success, required this.message});
+
+  factory UseCouponResponse.fromJson(Map<String, dynamic> json) {
+    return UseCouponResponse(
+      success: json['success'] == true,
+      message:
+          json['data']?.toString() ??
+          json['error_message'] ??
+          json['message'] ??
+          '',
+    );
+  }
+
+  factory UseCouponResponse.errorResponse(String message) {
+    return UseCouponResponse(success: false, message: message);
+  }
+}
