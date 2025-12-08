@@ -1,87 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../models/order/user_order_model.dart';
+import '../../services/order_service.dart';
 import '../../theme/app_theme.dart';
-
-class OrderStatus {
-  static const String pending = 'pending';
-  static const String processing = 'processing';
-  static const String shipped = 'shipped';
-  static const String delivered = 'delivered';
-  static const String cancelled = 'cancelled';
-}
-
-class OrderItem {
-  final String id;
-  final String orderNumber;
-  final DateTime orderDate;
-  final String status;
-  final double totalPrice;
-  final int itemCount;
-  final String? imageUrl;
-  final bool isAssetImage;
-
-  OrderItem({
-    required this.id,
-    required this.orderNumber,
-    required this.orderDate,
-    required this.status,
-    required this.totalPrice,
-    required this.itemCount,
-    this.imageUrl,
-    this.isAssetImage = true,
-  });
-
-  String get statusText {
-    switch (status) {
-      case OrderStatus.pending:
-        return 'Onay Bekliyor';
-      case OrderStatus.processing:
-        return 'Hazırlanıyor';
-      case OrderStatus.shipped:
-        return 'Kargoya Verildi';
-      case OrderStatus.delivered:
-        return 'Teslim Edildi';
-      case OrderStatus.cancelled:
-        return 'İptal Edildi';
-      default:
-        return 'Bilinmiyor';
-    }
-  }
-
-  Color get statusColor {
-    switch (status) {
-      case OrderStatus.pending:
-        return AppColors.warning;
-      case OrderStatus.processing:
-        return AppColors.info;
-      case OrderStatus.shipped:
-        return AppColors.primary;
-      case OrderStatus.delivered:
-        return AppColors.success;
-      case OrderStatus.cancelled:
-        return AppColors.error;
-      default:
-        return AppColors.textTertiary;
-    }
-  }
-
-  IconData get statusIcon {
-    switch (status) {
-      case OrderStatus.pending:
-        return Icons.schedule;
-      case OrderStatus.processing:
-        return Icons.inventory_2_outlined;
-      case OrderStatus.shipped:
-        return Icons.local_shipping_outlined;
-      case OrderStatus.delivered:
-        return Icons.check_circle_outline;
-      case OrderStatus.cancelled:
-        return Icons.cancel_outlined;
-      default:
-        return Icons.help_outline;
-    }
-  }
-}
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -92,50 +13,17 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final OrderService _orderService = OrderService();
   
-  final List<OrderItem> _orders = [
-    OrderItem(
-      id: '1',
-      orderNumber: 'SRC2024001234',
-      orderDate: DateTime.now().subtract(const Duration(days: 2)),
-      status: OrderStatus.shipped,
-      totalPrice: 489.90,
-      itemCount: 3,
-      imageUrl: 'assets/kategorileri/aromaterapi.png',
-    ),
-    OrderItem(
-      id: '2',
-      orderNumber: 'SRC2024001233',
-      orderDate: DateTime.now().subtract(const Duration(days: 5)),
-      status: OrderStatus.delivered,
-      totalPrice: 329.90,
-      itemCount: 2,
-      imageUrl: 'assets/kategorileri/dogalbitkiler.png',
-    ),
-    OrderItem(
-      id: '3',
-      orderNumber: 'SRC2024001232',
-      orderDate: DateTime.now().subtract(const Duration(days: 10)),
-      status: OrderStatus.delivered,
-      totalPrice: 199.90,
-      itemCount: 1,
-      imageUrl: 'assets/kategorileri/soguksikimyaglar.png',
-    ),
-    OrderItem(
-      id: '4',
-      orderNumber: 'SRC2024001231',
-      orderDate: DateTime.now().subtract(const Duration(days: 15)),
-      status: OrderStatus.cancelled,
-      totalPrice: 149.90,
-      itemCount: 1,
-      imageUrl: 'assets/kategorileri/organikkozmatik.png',
-    ),
-  ];
+  bool _isLoading = true;
+  String? _errorMessage;
+  UserOrdersResponse? _ordersResponse;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    _loadOrders();
   }
 
   @override
@@ -144,19 +32,86 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  List<OrderItem> get _activeOrders => _orders.where((o) => 
-    o.status == OrderStatus.pending || 
-    o.status == OrderStatus.processing || 
-    o.status == OrderStatus.shipped
-  ).toList();
+  Future<void> _loadOrders() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-  List<OrderItem> get _completedOrders => _orders.where((o) => 
-    o.status == OrderStatus.delivered
-  ).toList();
+    final response = await _orderService.getOrders();
 
-  List<OrderItem> get _cancelledOrders => _orders.where((o) => 
-    o.status == OrderStatus.cancelled
-  ).toList();
+    setState(() {
+      _isLoading = false;
+      if (response.isSuccess) {
+        _ordersResponse = response;
+      } else {
+        _errorMessage = response.message;
+      }
+    });
+  }
+
+  List<UserOrder> get _activeOrders => _ordersResponse?.activeOrders ?? [];
+  List<UserOrder> get _completedOrders => _ordersResponse?.completedOrders ?? [];
+  List<UserOrder> get _cancelledOrders => _ordersResponse?.cancelledOrders ?? [];
+  List<UserOrder> get _returnOrders => _ordersResponse?.returnOrders ?? [];
+
+  Color _getStatusColor(int statusID) {
+    switch (statusID) {
+      case 1: // Yeni Sipariş
+        return AppColors.info;
+      case 2: // Tedarik Sürecinde
+        return AppColors.warning;
+      case 3: // Hazırlanıyor
+        return AppColors.warning;
+      case 4: // Kargoya Verildi
+        return AppColors.primary;
+      case 5: // Onaylandı
+        return AppColors.success;
+      case 6: // İptal Edildi
+      case 7: // Üye Tarafından İptal Edildi
+        return AppColors.error;
+      case 8: // İade Talebi Var
+      case 9: // İade Kargoya Verildi
+      case 10: // İade İnceleniyor
+        return AppColors.warning;
+      case 11: // İade Edildi
+        return AppColors.success;
+      case 12: // İade Reddedildi
+        return AppColors.error;
+      default:
+        return AppColors.textTertiary;
+    }
+  }
+
+  IconData _getStatusIcon(int statusID) {
+    switch (statusID) {
+      case 1: // Yeni Sipariş
+        return Icons.fiber_new_outlined;
+      case 2: // Tedarik Sürecinde
+        return Icons.schedule;
+      case 3: // Hazırlanıyor
+        return Icons.inventory_2_outlined;
+      case 4: // Kargoya Verildi
+        return Icons.local_shipping_outlined;
+      case 5: // Onaylandı
+        return Icons.check_circle_outline;
+      case 6: // İptal Edildi
+      case 7: // Üye Tarafından İptal Edildi
+        return Icons.cancel_outlined;
+      case 8: // İade Talebi Var
+        return Icons.assignment_return_outlined;
+      case 9: // İade Kargoya Verildi
+        return Icons.local_shipping_outlined;
+      case 10: // İade İnceleniyor
+        return Icons.search;
+      case 11: // İade Edildi
+        return Icons.check_circle_outline;
+      case 12: // İade Reddedildi
+        return Icons.cancel_outlined;
+      default:
+        return Icons.help_outline;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -185,42 +140,103 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
               unselectedLabelColor: AppColors.textSecondary,
               indicatorColor: AppColors.primary,
               indicatorWeight: 3,
+              isScrollable: true,
               labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               unselectedLabelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               tabs: [
                 Tab(text: 'Aktif (${_activeOrders.length})'),
                 Tab(text: 'Tamamlanan (${_completedOrders.length})'),
                 Tab(text: 'İptal (${_cancelledOrders.length})'),
+                Tab(text: 'İade (${_returnOrders.length})'),
               ],
             ),
           ),
 
           // Content
           SliverFillRemaining(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOrderList(_activeOrders),
-                _buildOrderList(_completedOrders),
-                _buildOrderList(_cancelledOrders),
-              ],
-            ),
+            child: _isLoading
+                ? _buildLoadingState()
+                : _errorMessage != null
+                    ? _buildErrorState()
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildOrderList(_activeOrders),
+                          _buildOrderList(_completedOrders),
+                          _buildOrderList(_cancelledOrders),
+                          _buildOrderList(_returnOrders),
+                        ],
+                      ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOrderList(List<OrderItem> orders) {
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: AppColors.primary),
+          SizedBox(height: AppSpacing.md),
+          Text(
+            'Siparişler yükleniyor...',
+            style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.xxl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppColors.error,
+            ),
+            SizedBox(height: AppSpacing.md),
+            Text(
+              _errorMessage ?? 'Bir hata oluştu',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppSpacing.lg),
+            ElevatedButton.icon(
+              onPressed: _loadOrders,
+              icon: Icon(Icons.refresh),
+              label: Text('Tekrar Dene'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderList(List<UserOrder> orders) {
     if (orders.isEmpty) {
       return _buildEmptyState();
     }
     
-    return ListView.separated(
-      padding: EdgeInsets.all(AppSpacing.md),
-      itemCount: orders.length,
-      separatorBuilder: (context, index) => SizedBox(height: AppSpacing.sm),
-      itemBuilder: (context, index) => _buildOrderCard(orders[index]),
+    return RefreshIndicator(
+      onRefresh: _loadOrders,
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: EdgeInsets.all(AppSpacing.md),
+        itemCount: orders.length,
+        separatorBuilder: (context, index) => SizedBox(height: AppSpacing.sm),
+        itemBuilder: (context, index) => _buildOrderCard(orders[index]),
+      ),
     );
   }
 
@@ -266,7 +282,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             ),
             SizedBox(height: AppSpacing.sm),
             Text(
-              'Bu kategoride henüz siparişiniz bulunmuyor.',
+              _ordersResponse?.emptyMessage ?? 'Bu kategoride henüz siparişiniz bulunmuyor.',
               style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
@@ -276,11 +292,15 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildOrderCard(OrderItem order) {
+  Widget _buildOrderCard(UserOrder order) {
+    final statusColor = _getStatusColor(order.orderStatusID);
+    final statusIcon = _getStatusIcon(order.orderStatusID);
+    final firstProduct = order.products.isNotEmpty ? order.products.first : null;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        // Sipariş detayına git
+        // TODO: Sipariş detayına git
       },
       child: Container(
         decoration: BoxDecoration(
@@ -306,11 +326,20 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                     ),
                     child: ClipRRect(
                       borderRadius: AppRadius.borderRadiusXS,
-                      child: order.imageUrl != null
-                          ? Image.asset(
-                              order.imageUrl!,
+                      child: firstProduct?.productImage.isNotEmpty == true
+                          ? Image.network(
+                              firstProduct!.productImage,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) => _buildImagePlaceholder(),
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.primary,
+                                  ),
+                                );
+                              },
                             )
                           : _buildImagePlaceholder(),
                     ),
@@ -322,7 +351,7 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          order.orderNumber,
+                          order.orderCode,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -331,14 +360,21 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                         ),
                         SizedBox(height: 4),
                         Text(
-                          _formatDate(order.orderDate),
+                          order.orderDate,
                           style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          '${order.itemCount} ürün',
+                          '${order.totalProduct} ürün',
                           style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         ),
+                        if (order.orderPayment.isNotEmpty) ...[
+                          SizedBox(height: 4),
+                          Text(
+                            order.orderPayment,
+                            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -347,13 +383,23 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₺${order.totalPrice.toStringAsFixed(2)}',
+                        order.orderAmount,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
                         ),
                       ),
+                      if (order.orderDiscount.isNotEmpty && order.orderDiscount != '0,00 TL') ...[
+                        SizedBox(height: 2),
+                        Text(
+                          '-${order.orderDiscount}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -363,23 +409,23 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
             Container(
               padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
               decoration: BoxDecoration(
-                color: order.statusColor.withOpacity(0.08),
+                color: statusColor.withOpacity(0.08),
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(AppRadius.sm)),
               ),
               child: Row(
                 children: [
-                  Icon(order.statusIcon, color: order.statusColor, size: 18),
+                  Icon(statusIcon, color: statusColor, size: 18),
                   SizedBox(width: AppSpacing.sm),
                   Text(
-                    order.statusText,
+                    order.orderStatusTitle,
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: order.statusColor,
+                      color: statusColor,
                     ),
                   ),
                   Spacer(),
-                  Icon(Icons.chevron_right, color: order.statusColor, size: 20),
+                  Icon(Icons.chevron_right, color: statusColor, size: 20),
                 ],
               ),
             ),
@@ -398,13 +444,5 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         size: 24,
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

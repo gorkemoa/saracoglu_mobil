@@ -620,14 +620,67 @@ class CartPageState extends State<CartPage> {
     }
   }
 
-  void _removeCoupon() {
+  void _removeCoupon() async {
     HapticFeedback.lightImpact();
-    setState(() {
-      _appliedCoupon = null;
-      _showManualCouponInput = false;
-    });
-    // Sepeti yeniden yükle (kupon kaldırıldığında)
-    _loadBasket();
+
+    // API'den kuponu iptal et
+    final response = await _couponService.cancelCoupon();
+
+    if (response.success) {
+      setState(() {
+        _appliedCoupon = null;
+        _showManualCouponInput = false;
+      });
+      // Sepeti yeniden yükle (kupon kaldırıldığında)
+      await _loadBasket();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white, size: 18),
+                SizedBox(width: AppSpacing.sm),
+                Text('Kupon kaldırıldı'),
+              ],
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        HapticFeedback.vibrate();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 18),
+                SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    response.message.isNotEmpty
+                        ? response.message
+                        : 'Kupon kaldırılırken hata oluştu',
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(AppSpacing.md),
+            shape: RoundedRectangleBorder(
+              borderRadius: AppRadius.borderRadiusSM,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   @override

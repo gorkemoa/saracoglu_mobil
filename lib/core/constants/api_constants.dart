@@ -46,6 +46,7 @@ class ApiConstants {
   /// Coupon Endpoints
   static const String getUserCoupons = 'service/user/account/coupon/list';
   static const String useCoupon = 'service/user/account/coupon/use';
+  static const String cancelCoupon = 'service/user/account/coupon/cancel';
 
   /// Location Endpoints
   static const String getCities = 'service/general/general/cities/all';
@@ -76,4 +77,7 @@ class ApiConstants {
   static const String updateBasket = 'service/user/account/basket/update';
   static const String deleteBasket = 'service/user/account/basket/delete';
   static const String clearBasket = 'service/user/account/basket/clear';
+
+  /// Order Endpoints
+  static const String getUserOrders = 'service/user/account/order/list';
 }

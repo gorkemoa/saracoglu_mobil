@@ -75,4 +75,39 @@ class CouponService {
       );
     }
   }
+
+  /// Kuponu iptal et
+  Future<UseCouponResponse> cancelCoupon() async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return UseCouponResponse.errorResponse('Oturum açmanız gerekiyor');
+      }
+
+      final body = {'userToken': token};
+
+      _logger.d('📤 Cancel Coupon Request: $body');
+
+      final result = await _networkService.put(
+        ApiConstants.cancelCoupon,
+        body: body,
+      );
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.data != null) {
+        return UseCouponResponse.fromJson(result.data!);
+      } else {
+        return UseCouponResponse.errorResponse(
+          result.errorMessage ?? 'Kupon iptal edilirken bir hata oluştu',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ Kupon iptal hatası', error: e);
+      return UseCouponResponse.errorResponse(
+        'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
 }
