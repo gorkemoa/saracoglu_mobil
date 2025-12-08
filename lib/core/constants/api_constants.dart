@@ -60,6 +60,8 @@ class ApiConstants {
   static const String getSortList = 'service/products/product/list/sortList';
   /// GetProduct - kullanımı: '${ApiConstants.getProduct}/$productId?userToken=xxx'
   static const String getProduct = 'service/products/product/detail';
+  /// GetCategories - kullanımı: '${ApiConstants.getCategories}/0' (0 = tüm kategoriler)
+  static const String getCategories = 'service/products/category/list';
   /// GetProductComments - kullanımı: '${ApiConstants.getProductComments}/$productId'
   static const String getProductComments = 'service/products/product/comments';
 

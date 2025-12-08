@@ -8,6 +8,7 @@ import '../services/product_service.dart';
 import '../services/favorite_service.dart';
 import '../services/basket_service.dart';
 import '../models/product/product_model.dart';
+import '../models/product/category_model.dart';
 import 'product_detail_page.dart';
 import 'all_products_page.dart';
 
@@ -38,6 +39,10 @@ class HomeContentState extends State<HomeContent> {
   List<ProductModel> _campaignProducts = [];
   bool _isLoadingCampaignProducts = true;
 
+  // Kategoriler state
+  List<CategoryModel> _categories = [];
+  bool _isLoadingCategories = true;
+
   final List<Map<String, dynamic>> _banners = [
     {'image': 'assets/slider/1.png'},
     {'image': 'assets/slider/2.png'},
@@ -59,7 +64,22 @@ class HomeContentState extends State<HomeContent> {
 
   /// Ürünleri yükle
   Future<void> _loadProducts() async {
-    await Future.wait([_loadNewProducts(), _loadCampaignProducts()]);
+    await Future.wait([
+      _loadCategories(),
+      _loadNewProducts(),
+      _loadCampaignProducts(),
+    ]);
+  }
+
+  /// Kategorileri yükle
+  Future<void> _loadCategories() async {
+    final categories = await _productService.getCategories();
+    if (mounted) {
+      setState(() {
+        _isLoadingCategories = false;
+        _categories = categories;
+      });
+    }
   }
 
   /// Yeni ürünleri yükle (tüm sayfalardan)
@@ -444,45 +464,6 @@ class HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildMainCategories() {
-    final categories = [
-      {
-        'name': 'Kampanyalı Ürünler',
-        'image': 'assets/kategorileri/kampanya.png',
-      },
-      {
-        'name': 'Soğuk Sıkım Yağlar',
-        'image': 'assets/kategorileri/soguksikimyaglar.png',
-      },
-      {
-        'name': 'Doğal Bitkiler',
-        'image': 'assets/kategorileri/dogalbitkiler.png',
-      },
-      {
-        'name': 'Gıda & İçecekler',
-        'image': 'assets/kategorileri/dogalgidaveicecekler.png',
-      },
-      {
-        'name': 'Organik Kozmetik',
-        'image': 'assets/kategorileri/organikkozmatik.png',
-      },
-      {'name': 'Bebek Bakım', 'image': 'assets/kategorileri/bebekbakim.png'},
-      {'name': 'Ev & Yaşam', 'image': 'assets/kategorileri/evyasam.png'},
-      {'name': 'Aromaterapi', 'image': 'assets/kategorileri/aromaterapi.png'},
-      {
-        'name': 'Cilt & Vücut',
-        'image': 'assets/kategorileri/ciltvevucuturunleri.png',
-      },
-      {
-        'name': 'Saç Bakım',
-        'image': 'assets/kategorileri/sacbakimurunleri.png',
-      },
-      {'name': 'Kitaplar', 'image': 'assets/kategorileri/kitaplar.png'},
-      {
-        'name': 'Son Çağrı',
-        'image': 'assets/kategorileri/soncagriurunleri.png',
-      },
-    ];
-
     return Container(
       color: AppColors.surface,
       padding: EdgeInsets.all(AppSpacing.lg),
@@ -504,32 +485,70 @@ class HomeContentState extends State<HomeContent> {
             ],
           ),
           SizedBox(height: AppSpacing.lg),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 0.90,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 12,
+          if (_isLoadingCategories)
+            _buildCategoriesLoading()
+          else if (_categories.isEmpty)
+            _buildCategoriesEmpty()
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                childAspectRatio: 0.85,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 12,
+              ),
+              itemCount: _categories.length,
+              itemBuilder: (context, index) {
+                final category = _categories[index];
+                return _buildCategoryItem(category);
+              },
             ),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              return _buildCategoryItem(
-                categories[index]['name'] as String,
-                categories[index]['image'] as String,
-              );
-            },
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryItem(String name, String imagePath) {
+  Widget _buildCategoriesLoading() {
+    return SizedBox(
+      height: 100,
+      child: Center(
+        child: CircularProgressIndicator(
+          color: AppColors.primary,
+          strokeWidth: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoriesEmpty() {
+    return SizedBox(
+      height: 100,
+      child: Center(
+        child: Text(
+          'Kategoriler yüklenemedi',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textTertiary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryItem(CategoryModel category) {
     return GestureDetector(
       onTap: () {
-        // Kategori tıklama işlemi
+        HapticFeedback.lightImpact();
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AllProductsPage.category(
+              categoryId: category.catID,
+              categoryName: category.catName,
+            ),
+          ),
+        );
       },
       child: Column(
         children: [
@@ -544,17 +563,34 @@ class HomeContentState extends State<HomeContent> {
             ),
             child: ClipRRect(
               borderRadius: AppRadius.borderRadiusMD,
-              child: Image.asset(
-                imagePath,
+              child: Image.network(
+                category.catThumbImage,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) =>
                     Icon(Icons.category, color: AppColors.primary, size: 28),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                        strokeWidth: 2,
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                            : null,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
           SizedBox(height: AppSpacing.sm),
           Text(
-            name,
+            category.catName,
             style: AppTypography.labelSmall.copyWith(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w500,

@@ -1,6 +1,7 @@
 import 'package:logger/logger.dart';
 import '../core/constants/api_constants.dart';
 import '../models/product/product_model.dart';
+import '../models/product/category_model.dart';
 import 'network_service.dart';
 import 'auth_service.dart';
 
@@ -414,5 +415,47 @@ class ProductService {
       _logger.e('❌ Yorum getirme hatası', error: e);
       return null;
     }
+  }
+
+  /// Kategorileri getir
+  /// [parentCatId] - Üst kategori ID (0 = tüm kategoriler)
+  /// Cache mekanizması ile tek seferlik çekilir
+  List<CategoryModel>? _cachedCategories;
+
+  Future<List<CategoryModel>> getCategories({int parentCatId = 0}) async {
+    // Cache varsa döndür
+    if (_cachedCategories != null) {
+      return _cachedCategories!;
+    }
+
+    try {
+      _logger.i('📂 Kategoriler getiriliyor...');
+
+      final endpoint = '${ApiConstants.getCategories}/$parentCatId';
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = CategoryListResponse.fromJson(result.data!);
+        if (response.isSuccess) {
+          _cachedCategories = response.categories;
+          _logger.i('✅ ${_cachedCategories!.length} kategori yüklendi');
+          return _cachedCategories!;
+        }
+      }
+
+      _logger.w('⚠️ Kategoriler getirilemedi: ${result.errorMessage}');
+      return [];
+    } catch (e) {
+      _logger.e('❌ Kategori getirme hatası', error: e);
+      return [];
+    }
+  }
+
+  /// Kategori cache'ini temizle
+  void clearCategoriesCache() {
+    _cachedCategories = null;
   }
 }
