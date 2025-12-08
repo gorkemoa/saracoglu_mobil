@@ -80,4 +80,5 @@ class ApiConstants {
 
   /// Order Endpoints
   static const String getUserOrders = 'service/user/account/order/list';
+  static const String getOrderDetail = 'service/user/account/order/detail';
 }
