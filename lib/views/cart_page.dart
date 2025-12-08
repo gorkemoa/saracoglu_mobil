@@ -18,7 +18,7 @@ class CartPage extends StatefulWidget {
   State<CartPage> createState() => CartPageState();
 }
 
-class CartPageState extends State<CartPage> with TickerProviderStateMixin {
+class CartPageState extends State<CartPage> {
   final BasketService _basketService = BasketService();
   final AddressService _addressService = AddressService();
   final CouponService _couponService = CouponService();
@@ -42,18 +42,9 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
   bool _isApplyingCoupon = false;
   bool _showManualCouponInput = false;
 
-  // Animasyon kontrolcüleri
-  late AnimationController _slideController;
-
   @override
   void initState() {
     super.initState();
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _slideController.forward();
-    // Tüm verileri yükle
     _loadAllData();
   }
 
@@ -162,39 +153,12 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
-    _slideController.dispose();
     _couponController.dispose();
     super.dispose();
   }
 
-  /// API'den gelen subtotal değerini double'a çevir
-  double get _subtotal {
-    if (_basketData != null) {
-      return _parsePrice(_basketData!.subtotal);
-    }
-    return 0.0;
-  }
-
-  /// API'den gelen ücretsiz kargo limiti
-  double get _freeShippingLimit {
-    if (_basketData != null) {
-      return _parsePrice(_basketData!.cargoLimitPrice);
-    }
-    return 0.0;
-  }
-
-  /// Ücretsiz kargoya kalan tutar
-  double get _remainingForFreeCargo {
-    if (_basketData != null) {
-      return _parsePrice(_basketData!.remainingForFreeCargo);
-    }
-    return 0.0;
-  }
-
   /// Toplam ürün adedi (sepetteki tüm ürünlerin miktarlarının toplamı)
   int get _totalItems {
-    // API'den gelen totalItems yerine, sepetteki ürünlerin cartQuantity değerlerinin toplamını hesapla
-    // Bu sayede 1 üründen 8 adet seçildiğinde "8 ürün" görünür
     if (_cartItems.isEmpty) return 0;
     return _cartItems.fold(0, (sum, item) => sum + item.cartQuantity);
   }
@@ -202,7 +166,6 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
   /// Fiyat string'ini double'a çevir
   double _parsePrice(String priceStr) {
     if (priceStr.isEmpty) return 0.0;
-    // "385,00 TL" -> 385.00
     String cleaned = priceStr
         .replaceAll('TL', '')
         .replaceAll('.', '')
@@ -1021,9 +984,10 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
 
   Widget _buildShippingProgress() {
     final isFreeShipping = _basketData?.isFreeShipping ?? false;
-    final remaining = _remainingForFreeCargo;
-    final limit = _freeShippingLimit;
-    final progress = limit > 0 ? ((_subtotal / limit).clamp(0.0, 1.0)) : 1.0;
+    final remaining = _parsePrice(_basketData?.remainingForFreeCargo ?? '0');
+    final limit = _parsePrice(_basketData?.cargoLimitPrice ?? '0');
+    final subtotal = _parsePrice(_basketData?.subtotal ?? '0');
+    final progress = limit > 0 ? ((subtotal / limit).clamp(0.0, 1.0)) : 1.0;
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -2069,7 +2033,10 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
                         ) {
                           final minAmount =
                               double.tryParse(coupon.minBasketAmount) ?? 0;
-                          final isDisabled = _subtotal < minAmount;
+                          final currentSubtotal = _parsePrice(
+                            _basketData?.subtotal ?? '0',
+                          );
+                          final isDisabled = currentSubtotal < minAmount;
                           return InkWell(
                             onTap: isDisabled
                                 ? null
@@ -2409,48 +2376,7 @@ class CartPageState extends State<CartPage> with TickerProviderStateMixin {
               valueColor: AppColors.success,
             ),
           ],
-          // Kupon indirimi API'den discountAmount içinde geliyor, ayrıca göstermeye gerek yok
-          /*if (_couponDiscount > 0) ...[
-            SizedBox(height: AppSpacing.xs),
-            _buildSummaryRow(
-              'Kupon',
-              '',
-              valueColor: AppColors.success,
-            ),
-          ],*/
-          // Tasarruf bilgisi API'den gelmiyorsa gösterme
-          /*if (_totalSavings > 0) ...[
-            SizedBox(height: AppSpacing.xs),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacing.sm,
-                vertical: AppSpacing.xs,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.success.withOpacity(0.08),
-                borderRadius: AppRadius.borderRadiusXS,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.savings_outlined,
-                    color: AppColors.success,
-                    size: 14,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'tasarruf',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],*/
+
           Padding(
             padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
             child: Divider(color: AppColors.divider, height: 1),
