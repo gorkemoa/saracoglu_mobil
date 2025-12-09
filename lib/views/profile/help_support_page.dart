@@ -1,16 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../services/contact_service.dart';
 import '../../models/contact/contact_subject_model.dart';
-
-class FAQItem {
-  final String question;
-  final String answer;
-  final IconData icon;
-
-  FAQItem({required this.question, required this.answer, required this.icon});
-}
+import '../../models/contact/contact_info_model.dart';
+import '../../models/contact/faq_model.dart';
 
 class HelpSupportPage extends StatefulWidget {
   const HelpSupportPage({super.key});
@@ -20,200 +15,195 @@ class HelpSupportPage extends StatefulWidget {
 }
 
 class _HelpSupportPageState extends State<HelpSupportPage> {
-  final _searchController = TextEditingController();
   final ContactService _contactService = ContactService();
-  int _expandedIndex = -1;
 
-  final List<FAQItem> _faqItems = [
-    FAQItem(
-      question: 'Siparişimi nasıl takip edebilirim?',
-      answer:
-          'Siparişlerinizi "Siparişlerim" bölümünden takip edebilirsiniz. Kargo takip numarası ile de kargo firmasının sitesinden güncel durumu görebilirsiniz.',
-      icon: Icons.local_shipping_outlined,
-    ),
-    FAQItem(
-      question: 'İade işlemi nasıl yapılır?',
-      answer:
-          'Ürünü teslim aldığınız tarihten itibaren 14 gün içinde "İade Taleplerim" bölümünden iade başvurusu yapabilirsiniz. Onay sonrası kargo kodunuz iletilecektir.',
-      icon: Icons.assignment_return_outlined,
-    ),
-    FAQItem(
-      question: 'Ödeme seçenekleri nelerdir?',
-      answer:
-          'Kredi kartı, banka kartı, havale/EFT ve kapıda ödeme seçenekleri mevcuttur. Taksitli ödeme imkanı da sunmaktayız.',
-      icon: Icons.payment_outlined,
-    ),
-    FAQItem(
-      question: 'Ürünler orijinal mi?',
-      answer:
-          'Tüm ürünlerimiz orijinal ve yetkili distribütörlerden temin edilmektedir. Her ürün için orijinallik garantisi verilmektedir.',
-      icon: Icons.verified_outlined,
-    ),
-    FAQItem(
-      question: 'Kargo ücreti ne kadar?',
-      answer:
-          '200 TL ve üzeri siparişlerde kargo ücretsizdir. 200 TL altı siparişlerde 29.90 TL kargo ücreti uygulanmaktadır.',
-      icon: Icons.inventory_2_outlined,
-    ),
-    FAQItem(
-      question: 'Sipariş iptal edilebilir mi?',
-      answer:
-          'Kargoya verilmemiş siparişlerinizi iptal edebilirsiniz. Kargoya verildikten sonra iptal yapılamamaktadır, iade süreci başlatmanız gerekmektedir.',
-      icon: Icons.cancel_outlined,
-    ),
-  ];
+  // Data
+  ContactInfo? _contactInfo;
+  List<FAQCategory> _faqCategories = [];
+  List<FAQItem> _faqItems = [];
+
+  // UI State
+  bool _isLoading = true;
+  int _selectedTabIndex = 0;
+  int? _selectedCategoryId;
+  int _expandedFAQIndex = -1;
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    // Paralel olarak tüm verileri çek
+    final results = await Future.wait([
+      _contactService.getContactInfos(),
+      _contactService.getFAQCategories(),
+      _contactService.getFAQList(),
+    ]);
+
+    setState(() {
+      _contactInfo = (results[0] as ContactInfoResponse?)?.data;
+      _faqCategories = (results[1] as FAQCategoriesResponse?)?.categories ?? [];
+      _faqItems = (results[2] as FAQListResponse?)?.faqs ?? [];
+
+      // İlk kategoriyi seç
+      if (_faqCategories.isNotEmpty) {
+        _selectedCategoryId = _faqCategories.first.catID;
+      }
+
+      _isLoading = false;
+    });
+  }
+
+  List<FAQItem> get _filteredFAQs {
+    if (_selectedCategoryId == null) return _faqItems;
+    return _faqItems.where((faq) => faq.catID == _selectedCategoryId).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // AppBar
-          SliverAppBar(
-            backgroundColor: AppColors.surface,
-            pinned: true,
-            elevation: 0,
-            scrolledUnderElevation: 2,
-            leading: IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: Icon(
-                Icons.arrow_back_ios,
-                color: AppColors.textPrimary,
-                size: 20,
-              ),
-            ),
-            title: Text(
-              'Yardım & Destek',
-              style: AppTypography.h4.copyWith(color: AppColors.textPrimary),
-            ),
-            centerTitle: true,
-          ),
+      appBar: AppBar(
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+        ),
+        title: Text(
+          'Yardım & Destek',
+          style: AppTypography.h4.copyWith(color: Colors.white),
+        ),
+        centerTitle: true,
+      ),
+      body: _isLoading ? _buildLoadingState() : _buildContent(),
+    );
+  }
 
-          // Arama
-          SliverToBoxAdapter(child: _buildSearchBar()),
+  Widget _buildLoadingState() {
+    return const Center(
+      child: CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+      ),
+    );
+  }
 
-          // İletişim kartları
-          SliverToBoxAdapter(child: _buildContactOptions()),
-
-          // SSS başlık
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.xl,
-                AppSpacing.lg,
-                AppSpacing.md,
-              ),
-              child: Text('Sıkça Sorulan Sorular', style: AppTypography.h4),
-            ),
-          ),
-
-          // SSS listesi
-          SliverPadding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildFAQItem(index),
-                childCount: _faqItems.length,
-              ),
-            ),
-          ),
-
-          // Destek talebi
-          SliverToBoxAdapter(child: _buildSupportTicketSection()),
-
-          // Taleplerim bölümü
-          SliverToBoxAdapter(child: _buildMyRequestsSection()),
-
-          SliverToBoxAdapter(child: SizedBox(height: AppSpacing.xxl)),
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeaderBanner(),
+          _buildContactSection(),
+          _buildTabSelector(),
+          if (_selectedTabIndex == 0)
+            _buildFAQSection()
+          else
+            _buildRequestsSection(),
+          SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
   }
 
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: EdgeInsets.all(AppSpacing.lg),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Yardım konusu ara...',
-          hintStyle: TextStyle(color: AppColors.textTertiary),
-          filled: true,
-          fillColor: AppColors.surface,
-          border: OutlineInputBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-            borderSide: BorderSide.none,
+  Widget _buildHeaderBanner() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(AppSpacing.xl),
+      decoration: const BoxDecoration(color:  AppColors.textTertiary),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.support_agent,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.md,
+          SizedBox(height: AppSpacing.md),
+          Text(
+            'Size nasıl yardımcı olabiliriz?',
+            style: AppTypography.h4.copyWith(color: Colors.white),
           ),
-          prefixIcon: Icon(
-            Icons.search,
-            color: AppColors.textSecondary,
-            size: 22,
-          ),
-          suffixIcon: _searchController.text.isNotEmpty
-              ? IconButton(
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() {});
-                  },
-                  icon: Icon(
-                    Icons.close,
-                    color: AppColors.textSecondary,
-                    size: 20,
-                  ),
-                )
-              : null,
-        ),
-        onChanged: (_) => setState(() {}),
+          if (_contactInfo != null && _contactInfo!.compExcerpt.isNotEmpty) ...[
+            SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
+              child: Text(
+                _contactInfo!.compExcerpt,
+                textAlign: TextAlign.center,
+                style: AppTypography.bodySmall.copyWith(
+                  color: Colors.white.withOpacity(0.95),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
 
-  Widget _buildContactOptions() {
+  Widget _buildContactSection() {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Row(
+      padding: EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: _buildContactCard(
-              icon: Icons.phone_outlined,
-              title: 'Ara',
-              subtitle: '0850 123 45 67',
-              color: AppColors.success,
-              onTap: () => _showCallSheet(),
-            ),
+          Text('İletişim', style: AppTypography.h5),
+          SizedBox(height: AppSpacing.md),
+
+          // Telefon ve E-posta kartları
+          Row(
+            children: [
+              Expanded(
+                child: _buildContactCard(
+                  icon: Icons.phone_outlined,
+                  title: 'Müşteri Hizmetleri',
+                  subtitle: _contactInfo?.compCustomerPhone ?? '0850 XXX XX XX',
+                  color: AppColors.success,
+                  onTap: () => _showCallSheet(),
+                ),
+              ),
+              SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: _buildContactCard(
+                  icon: Icons.mail_outlined,
+                  title: 'E-posta',
+                  subtitle: _contactInfo?.compEmail ?? 'info@example.com',
+                  color: AppColors.info,
+                  onTap: () => _launchEmail(),
+                ),
+              ),
+            ],
           ),
-          SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: _buildContactCard(
-              icon: Icons.chat_outlined,
-              title: 'Canlı Destek',
-              subtitle: 'Çevrimiçi',
-              color: AppColors.primary,
-              onTap: () => _showLiveChatSheet(),
-            ),
-          ),
-          SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: _buildContactCard(
-              icon: Icons.email_outlined,
-              title: 'E-posta',
-              subtitle: 'Yaz',
-              color: AppColors.info,
-              onTap: () => _showEmailSheet(),
-            ),
-          ),
+
+          SizedBox(height: AppSpacing.md),
+
+          // Sosyal medya ve destek talebi
+          _buildSupportRequestCard(),
+
+          SizedBox(height: AppSpacing.md),
+
+          // Sosyal medya
+          if (_hasSocialMedia()) _buildSocialMediaSection(),
         ],
       ),
     );
@@ -227,13 +217,16 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
-        padding: EdgeInsets.all(AppSpacing.md),
+        padding: EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: AppRadius.borderRadiusSM,
-          boxShadow: AppShadows.shadowCard,
+          borderRadius: AppRadius.borderRadiusMD,
+          border: Border.all(color: AppColors.border),
         ),
         child: Column(
           children: [
@@ -249,15 +242,16 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
             SizedBox(height: AppSpacing.sm),
             Text(
               title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
+              style: AppTypography.labelMedium,
+              textAlign: TextAlign.center,
             ),
+            SizedBox(height: AppSpacing.xxs),
             Text(
               subtitle,
-              style: TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              style: AppTypography.bodySmall.copyWith(color: color),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -265,170 +259,61 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
     );
   }
 
-  Widget _buildFAQItem(int index) {
-    final item = _faqItems[index];
-    final isExpanded = _expandedIndex == index;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: AppSpacing.sm),
-      child: GestureDetector(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          setState(() {
-            _expandedIndex = isExpanded ? -1 : index;
-          });
-        },
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: AppRadius.borderRadiusSM,
-            border: Border.all(
-              color: isExpanded
-                  ? AppColors.primary.withOpacity(0.3)
-                  : AppColors.border,
-            ),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: EdgeInsets.all(AppSpacing.md),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: AppRadius.borderRadiusXS,
-                      ),
-                      child: Icon(
-                        item.icon,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                    ),
-                    SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        item.question,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    AnimatedRotation(
-                      turns: isExpanded ? 0.5 : 0,
-                      duration: Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: AppColors.textSecondary,
-                        size: 22,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              AnimatedCrossFade(
-                firstChild: SizedBox.shrink(),
-                secondChild: Container(
-                  padding: EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    0,
-                    AppSpacing.md,
-                    AppSpacing.md,
-                  ),
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: AppRadius.borderRadiusXS,
-                    ),
-                    child: Text(
-                      item.answer,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-                crossFadeState: isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: Duration(milliseconds: 200),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSupportTicketSection() {
-    return Padding(
-      padding: EdgeInsets.all(AppSpacing.lg),
+  Widget _buildSupportRequestCard() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        _showEmailSheet();
+      },
       child: Container(
         padding: EdgeInsets.all(AppSpacing.lg),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primary.withOpacity(0.08),
-              AppColors.primary.withOpacity(0.03),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: AppColors.surface,
           borderRadius: AppRadius.borderRadiusMD,
-          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+          border: Border.all(color: AppColors.border),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.help_center_outlined,
-                  color: AppColors.primary,
-                  size: 24,
-                ),
-                SizedBox(width: AppSpacing.sm),
-                Text(
-                  'Sorunuz çözülmedi mi?',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ],
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.edit_note,
+                color: AppColors.primary,
+                size: 22,
+              ),
             ),
-            SizedBox(height: AppSpacing.sm),
-            Text(
-              'Destek talebi oluşturarak müşteri temsilcimizden yardım alabilirsiniz.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-            ),
-            SizedBox(height: AppSpacing.md),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showCreateTicketSheet(),
-                icon: Icon(Icons.add_comment_outlined, size: 18),
-                label: Text(
-                  'Destek Talebi Oluştur',
-                  style: AppTypography.buttonMedium,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.borderRadiusSM,
+            SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Destek Talebi Oluştur',
+                    style: AppTypography.labelLarge,
                   ),
-                ),
+                  SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    'Sorularınız için bize yazın',
+                    style: AppTypography.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: AppRadius.borderRadiusSM,
+              ),
+              child: const Icon(
+                Icons.arrow_forward,
+                color: Colors.white,
+                size: 16,
               ),
             ),
           ],
@@ -437,80 +322,111 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
     );
   }
 
-  Widget _buildMyRequestsSection() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+  bool _hasSocialMedia() {
+    if (_contactInfo == null) return false;
+    return _contactInfo!.compFacebook.isNotEmpty ||
+        _contactInfo!.compInstagram.isNotEmpty ||
+        _contactInfo!.compTwitter.isNotEmpty ||
+        _contactInfo!.compYoutube.isNotEmpty;
+  }
+
+  Widget _buildSocialMediaSection() {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusSM,
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('Sosyal Medya', style: AppTypography.labelMedium),
+          SizedBox(height: AppSpacing.sm),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Text('Taleplerim', style: AppTypography.h4),
-              TextButton(
-                onPressed: () => _showMyRequestsSheet(),
-                child: Text(
-                  'Tümünü Gör',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
-                  ),
+              if (_contactInfo!.compFacebook.isNotEmpty)
+                _buildSocialButton(
+                  'Facebook',
+                  Icons.facebook,
+                  const Color(0xFF1877F2),
+                  _contactInfo!.compFacebook,
                 ),
-              ),
+              if (_contactInfo!.compInstagram.isNotEmpty)
+                _buildSocialButton(
+                  'Instagram',
+                  Icons.camera_alt,
+                  const Color(0xFFE4405F),
+                  _contactInfo!.compInstagram,
+                ),
+              if (_contactInfo!.compTwitter.isNotEmpty)
+                _buildSocialButton(
+                  'X',
+                  Icons.close,
+                  const Color(0xFF000000),
+                  _contactInfo!.compTwitter,
+                ),
+              if (_contactInfo!.compYoutube.isNotEmpty)
+                _buildSocialButton(
+                  'YouTube',
+                  Icons.play_circle_filled,
+                  const Color(0xFFFF0000),
+                  _contactInfo!.compYoutube,
+                ),
             ],
           ),
-          SizedBox(height: AppSpacing.sm),
-          GestureDetector(
-            onTap: () => _showMyRequestsSheet(),
-            child: Container(
-              padding: EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: AppRadius.borderRadiusSM,
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.info.withOpacity(0.1),
-                      borderRadius: AppRadius.borderRadiusXS,
-                    ),
-                    child: Icon(Icons.history, color: AppColors.info, size: 20),
-                  ),
-                  SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Geçmiş Taleplerim',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        Text(
-                          'Gönderdiğiniz talepleri görüntüleyin',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: AppColors.textSecondary,
-                    size: 16,
-                  ),
-                ],
-              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSocialButton(
+    String name,
+    IconData icon,
+    Color color,
+    String url,
+  ) {
+    return Padding(
+      padding: EdgeInsets.only(right: AppSpacing.sm),
+      child: GestureDetector(
+        onTap: () => _launchUrl(url),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: AppRadius.borderRadiusSM,
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabSelector() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+      padding: EdgeInsets.all(AppSpacing.xs),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusSM,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTabButton(
+              title: 'Sıkça Sorulanlar',
+              isSelected: _selectedTabIndex == 0,
+              onTap: () => setState(() => _selectedTabIndex = 0),
+            ),
+          ),
+          Expanded(
+            child: _buildTabButton(
+              title: 'Taleplerim',
+              isSelected: _selectedTabIndex == 1,
+              onTap: () => setState(() => _selectedTabIndex = 1),
             ),
           ),
         ],
@@ -518,154 +434,337 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
     );
   }
 
-  void _showMyRequestsSheet() {
-    List<UserContactForm> contacts = [];
-    bool isLoading = true;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          if (isLoading && contacts.isEmpty) {
-            _contactService.getUserContactForms().then((response) {
-              if (response != null && response.isSuccess) {
-                setSheetState(() {
-                  contacts = response.contacts;
-                  isLoading = false;
-                });
-              } else {
-                setSheetState(() {
-                  isLoading = false;
-                });
-              }
-            });
-          }
-
-          return Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.85,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppRadius.xl),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(AppSpacing.xl),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: AppRadius.borderRadiusRound,
-                        ),
-                      ),
-                      SizedBox(height: AppSpacing.xl),
-                      Text('Taleplerim', style: AppTypography.h4),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: isLoading
-                      ? Center(child: CircularProgressIndicator(strokeWidth: 2))
-                      : contacts.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.inbox_outlined,
-                                size: 64,
-                                color: AppColors.textTertiary,
-                              ),
-                              SizedBox(height: AppSpacing.md),
-                              Text(
-                                'Henüz talebiniz bulunmuyor',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.separated(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.lg,
-                          ),
-                          itemCount: contacts.length,
-                          separatorBuilder: (context, index) =>
-                              SizedBox(height: AppSpacing.sm),
-                          itemBuilder: (context, index) {
-                            final contact = contacts[index];
-                            return _buildContactFormCard(contact);
-                          },
-                        ),
-                ),
-                SafeArea(
-                  child: Padding(
-                    padding: EdgeInsets.all(AppSpacing.lg),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                            vertical: AppSpacing.md,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadius.borderRadiusSM,
-                          ),
-                          side: BorderSide(color: AppColors.border),
-                        ),
-                        child: Text(
-                          'Kapat',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+  Widget _buildTabButton({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: AppRadius.borderRadiusSM,
+        ),
+        child: Text(
+          title,
+          textAlign: TextAlign.center,
+          style: AppTypography.labelMedium.copyWith(
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildContactFormCard(UserContactForm contact) {
-    Color statusColor;
-    switch (contact.statusID) {
-      case 1: // Yeni Kayıt
-        statusColor = AppColors.info;
-        break;
-      case 2: // İşlemde
-        statusColor = AppColors.warning;
-        break;
-      case 3: // Tamamlandı
-        statusColor = AppColors.success;
-        break;
-      default:
-        statusColor = AppColors.textSecondary;
-    }
+  Widget _buildFAQSection() {
+    return Padding(
+      padding: EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Kategori Seçici
+          if (_faqCategories.isNotEmpty) ...[
+            SizedBox(
+              height: 36,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _faqCategories.length,
+                itemBuilder: (context, index) {
+                  final category = _faqCategories[index];
+                  final isSelected = category.catID == _selectedCategoryId;
+                  return Padding(
+                    padding: EdgeInsets.only(right: AppSpacing.sm),
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          _selectedCategoryId = category.catID;
+                          _expandedFAQIndex = -1;
+                        });
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primary
+                              : AppColors.surface,
+                          borderRadius: AppRadius.borderRadiusRound,
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.border,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          category.catName,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textSecondary,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: AppSpacing.lg),
+          ],
+
+          // FAQ Listesi
+          if (_filteredFAQs.isEmpty)
+            _buildEmptyFAQState()
+          else
+            ...List.generate(
+              _filteredFAQs.length,
+              (index) => _buildFAQItem(index),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyFAQState() {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusMD,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.help_outline, size: 48, color: AppColors.textTertiary),
+          SizedBox(height: AppSpacing.md),
+          Text(
+            'Bu kategoride soru bulunmuyor',
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFAQItem(int index) {
+    final item = _filteredFAQs[index];
+    final isExpanded = _expandedFAQIndex == index;
 
     return Container(
+      margin: EdgeInsets.only(bottom: AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusSM,
+        border: Border.all(
+          color: isExpanded
+              ? AppColors.primary.withOpacity(0.3)
+              : AppColors.border,
+        ),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() => _expandedFAQIndex = isExpanded ? -1 : index);
+            },
+            borderRadius: AppRadius.borderRadiusSM,
+            child: Padding(
+              padding: EdgeInsets.all(AppSpacing.lg),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      item.faqTitle.isNotEmpty ? item.faqTitle : item.catName,
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: AppColors.textSecondary,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                0,
+                AppSpacing.lg,
+                AppSpacing.lg,
+              ),
+              child: Container(
+                padding: EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: AppRadius.borderRadiusSM,
+                ),
+                child: Text(
+                  item.faqDesc,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.6,
+                  ),
+                ),
+              ),
+            ),
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestsSection() {
+    return Padding(
+      padding: EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Destek Taleplerim', style: AppTypography.h5),
+              TextButton.icon(
+                onPressed: _showEmailSheet,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Yeni'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              ),
+            ],
+          ),
+          SizedBox(height: AppSpacing.md),
+          FutureBuilder<UserContactFormsResponse?>(
+            future: _contactService.getUserContactForms(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(AppSpacing.xxl),
+                    child: const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.primary,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final contacts = snapshot.data?.contacts ?? [];
+              if (contacts.isEmpty) return _buildEmptyRequestsState();
+
+              return Column(
+                children: contacts.map((c) => _buildRequestCard(c)).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyRequestsState() {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.xxl),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusMD,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.inbox_outlined,
+              size: 32,
+              color: AppColors.primary,
+            ),
+          ),
+          SizedBox(height: AppSpacing.lg),
+          Text('Henüz talebiniz yok', style: AppTypography.labelLarge),
+          SizedBox(height: AppSpacing.sm),
+          Text(
+            'Yardıma ihtiyacınız olduğunda\nbize yazabilirsiniz.',
+            textAlign: TextAlign.center,
+            style: AppTypography.bodySmall,
+          ),
+          SizedBox(height: AppSpacing.lg),
+          ElevatedButton.icon(
+            onPressed: _showEmailSheet,
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Talep Oluştur'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestCard(UserContactForm contact) {
+
+  
+
+    return Container(
+      margin: EdgeInsets.only(bottom: AppSpacing.sm),
       padding: EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: AppColors.surface,
         borderRadius: AppRadius.borderRadiusSM,
         border: Border.all(color: AppColors.border),
       ),
@@ -673,30 +772,27 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
                 child: Text(
                   contact.subjectTitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+                  style: AppTypography.labelLarge,
                 ),
               ),
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
-                  borderRadius: AppRadius.borderRadiusXS,
+                 color: Colors.green,
+                  borderRadius: AppRadius.borderRadiusRound,
                 ),
                 child: Text(
                   contact.statusTitle,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: statusColor,
+                  style: AppTypography.labelSmall.copyWith(
+              color: Colors.white,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -705,30 +801,23 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
           SizedBox(height: AppSpacing.sm),
           Text(
             contact.message,
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
+            style: AppTypography.bodySmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
           SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Icon(Icons.access_time, size: 14, color: AppColors.textTertiary),
-              SizedBox(width: 4),
-              Text(
-                contact.createdAt,
-                style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
-              ),
-            ],
+          Text(
+            contact.createdAt,
+            style: AppTypography.labelSmall.copyWith(
+              color: AppColors.textTertiary,
+            ),
           ),
         ],
       ),
     );
   }
 
+  // Bottom Sheets
   void _showCallSheet() {
     showModalBottomSheet(
       context: context,
@@ -761,139 +850,42 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
                   color: AppColors.success.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.phone_outlined,
+                child: const Icon(
+                  Icons.phone,
                   color: AppColors.success,
-                  size: 32,
+                  size: 28,
                 ),
               ),
-              SizedBox(height: AppSpacing.lg),
-              Text('Müşteri Hizmetleri', style: AppTypography.h4),
+              SizedBox(height: AppSpacing.md),
+              Text('Müşteri Hizmetleri', style: AppTypography.h5),
               SizedBox(height: AppSpacing.sm),
               Text(
-                '0850 123 45 67',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
+                _contactInfo?.compCustomerPhone ?? '',
+                style: AppTypography.h3.copyWith(color: AppColors.primary),
               ),
-              SizedBox(height: AppSpacing.sm),
-              Text(
-                'Hafta içi 09:00 - 18:00',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+              if (_contactInfo != null &&
+                  _contactInfo!.compExcerpt.isNotEmpty) ...[
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  _contactInfo!.compExcerpt,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodySmall,
                 ),
-              ),
+              ],
               SizedBox(height: AppSpacing.xl),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.call),
-                  label: Text('Şimdi Ara', style: AppTypography.buttonMedium),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _launchPhone(_contactInfo?.compCustomerPhone ?? '');
+                  },
+                  icon: const Icon(Icons.call),
+                  label: const Text('Şimdi Ara'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.borderRadiusSM,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showLiveChatSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.all(AppSpacing.xl),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(AppRadius.xl),
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: AppRadius.borderRadiusRound,
-                ),
-              ),
-              SizedBox(height: AppSpacing.xl),
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.headset_mic_outlined,
-                  color: AppColors.primary,
-                  size: 32,
-                ),
-              ),
-              SizedBox(height: AppSpacing.lg),
-              Text('Canlı Destek', style: AppTypography.h4),
-              SizedBox(height: AppSpacing.sm),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: AppColors.success,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  SizedBox(width: AppSpacing.xs),
-                  Text(
-                    'Çevrimiçi',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: AppSpacing.sm),
-              Text(
-                'Ortalama bekleme süresi: 2 dakika',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              SizedBox(height: AppSpacing.xl),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.chat),
-                  label: Text(
-                    'Sohbet Başlat',
-                    style: AppTypography.buttonMedium,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.borderRadiusSM,
-                    ),
                   ),
                 ),
               ),
@@ -917,21 +909,16 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) {
-          // İlk açılışta konuları yükle
           if (isLoading && subjects.isEmpty) {
             _contactService.getContactSubjects().then((response) {
               if (response != null && response.isSuccess) {
                 setSheetState(() {
                   subjects = response.subjects;
-                  if (subjects.isNotEmpty) {
-                    selectedSubject = subjects.first;
-                  }
+                  if (subjects.isNotEmpty) selectedSubject = subjects.first;
                   isLoading = false;
                 });
               } else {
-                setSheetState(() {
-                  isLoading = false;
-                });
+                setSheetState(() => isLoading = false);
               }
             });
           }
@@ -941,7 +928,6 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
             child: Container(
-              padding: EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.vertical(
@@ -949,202 +935,243 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
                 ),
               ),
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.85,
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
               ),
               child: SafeArea(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: AppRadius.borderRadiusRound,
-                          ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Container(
+                      padding: EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.border),
                         ),
                       ),
-                      SizedBox(height: AppSpacing.xl),
-                      Center(
-                        child: Text('E-posta Gönder', style: AppTypography.h4),
-                      ),
-                      SizedBox(height: AppSpacing.xl),
-                      Text(
-                        'Konu',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      SizedBox(height: AppSpacing.sm),
-                      if (isLoading)
-                        Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(AppSpacing.md),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      else if (subjects.isEmpty)
-                        Container(
-                          padding: EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: AppRadius.borderRadiusSM,
-                          ),
-                          child: Text(
-                            'Konular yüklenemedi',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: AppSpacing.md,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: AppRadius.borderRadiusSM,
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<ContactSubject>(
-                              value: selectedSubject,
-                              isExpanded: true,
-                              icon: Icon(
-                                Icons.keyboard_arrow_down,
-                                color: AppColors.textSecondary,
-                              ),
-                              dropdownColor: AppColors.surface,
-                              items: subjects.map((subject) {
-                                return DropdownMenuItem<ContactSubject>(
-                                  value: subject,
-                                  child: Text(
-                                    subject.subjectName,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setSheetState(() {
-                                  selectedSubject = value;
-                                });
-                              },
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.border,
+                              borderRadius: AppRadius.borderRadiusRound,
                             ),
                           ),
-                        ),
-                      SizedBox(height: AppSpacing.lg),
-                      Text(
-                        'Mesaj',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      SizedBox(height: AppSpacing.sm),
-                      TextField(
-                        controller: messageController,
-                        maxLines: 4,
-                        decoration: InputDecoration(
-                          hintText: 'Mesajınızı yazınız',
-                          hintStyle: TextStyle(color: AppColors.textTertiary),
-                          filled: true,
-                          fillColor: AppColors.background,
-                          border: OutlineInputBorder(
-                            borderRadius: AppRadius.borderRadiusSM,
-                            borderSide: BorderSide.none,
+                          SizedBox(height: AppSpacing.lg),
+                          Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.edit_note,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
+                              ),
+                              SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Destek Talebi',
+                                      style: AppTypography.h5,
+                                    ),
+                                    Text(
+                                      'En kısa sürede dönüş yapacağız',
+                                      style: AppTypography.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => Navigator.pop(context),
+                                icon: const Icon(Icons.close),
+                                color: AppColors.textSecondary,
+                              ),
+                            ],
                           ),
-                          contentPadding: EdgeInsets.all(AppSpacing.md),
+                        ],
+                      ),
+                    ),
+
+                    // Form
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: EdgeInsets.all(AppSpacing.lg),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Konu', style: AppTypography.labelLarge),
+                            SizedBox(height: AppSpacing.sm),
+                            if (isLoading)
+                              Container(
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else if (subjects.isEmpty)
+                              Container(
+                                padding: EdgeInsets.all(AppSpacing.md),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withOpacity(0.1),
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: AppColors.error,
+                                      size: 18,
+                                    ),
+                                    SizedBox(width: AppSpacing.sm),
+                                    Text(
+                                      'Konular yüklenemedi',
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.md,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<ContactSubject>(
+                                    value: selectedSubject,
+                                    isExpanded: true,
+                                    icon: const Icon(Icons.keyboard_arrow_down),
+                                    items: subjects
+                                        .map(
+                                          (s) => DropdownMenuItem(
+                                            value: s,
+                                            child: Text(s.subjectName),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) => setSheetState(
+                                      () => selectedSubject = v,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            SizedBox(height: AppSpacing.lg),
+                            Text('Mesajınız', style: AppTypography.labelLarge),
+                            SizedBox(height: AppSpacing.sm),
+                            TextField(
+                              controller: messageController,
+                              maxLines: 5,
+                              decoration: InputDecoration(
+                                hintText: 'Sorununuzu detaylı açıklayınız...',
+                                hintStyle: AppTypography.bodyMedium.copyWith(
+                                  color: AppColors.textTertiary,
+                                ),
+                                filled: true,
+                                fillColor: AppColors.background,
+                                border: OutlineInputBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                  borderSide: BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                  borderSide: BorderSide(
+                                    color: AppColors.border,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: AppRadius.borderRadiusSM,
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primary,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              onChanged: (_) => setSheetState(() {}),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: AppSpacing.xl),
-                      SizedBox(
+                    ),
+
+                    // Submit
+                    Container(
+                      padding: EdgeInsets.all(AppSpacing.lg),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border(
+                          top: BorderSide(color: AppColors.border),
+                        ),
+                      ),
+                      child: SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton.icon(
+                        child: ElevatedButton(
                           onPressed:
                               (isSending ||
                                   selectedSubject == null ||
                                   messageController.text.trim().isEmpty)
                               ? null
                               : () async {
-                                  setSheetState(() {
-                                    isSending = true;
-                                  });
-
+                                  setSheetState(() => isSending = true);
                                   final response = await _contactService
                                       .sendContactMessage(
                                         subjectId: selectedSubject!.subjectID,
                                         message: messageController.text.trim(),
                                       );
-
-                                  setSheetState(() {
-                                    isSending = false;
-                                  });
+                                  setSheetState(() => isSending = false);
 
                                   if (response != null && response.isSuccess) {
                                     Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.check_circle,
-                                              color: Colors.white,
-                                              size: 18,
-                                            ),
-                                            SizedBox(width: AppSpacing.sm),
-                                            Expanded(
-                                              child: Text(
-                                                response.successMessage ??
-                                                    'E-posta gönderildi',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        backgroundColor: AppColors.success,
-                                        behavior: SnackBarBehavior.floating,
-                                        margin: EdgeInsets.all(AppSpacing.md),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              AppRadius.borderRadiusSM,
-                                        ),
-                                      ),
+                                    _showSnackBar(
+                                      response.successMessage ??
+                                          'Mesajınız gönderildi!',
+                                      true,
                                     );
+                                    setState(() {});
                                   } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.error_outline,
-                                              color: Colors.white,
-                                              size: 18,
-                                            ),
-                                            SizedBox(width: AppSpacing.sm),
-                                            Text('Mesaj gönderilemedi'),
-                                          ],
-                                        ),
-                                        backgroundColor: AppColors.error,
-                                        behavior: SnackBarBehavior.floating,
-                                        margin: EdgeInsets.all(AppSpacing.md),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              AppRadius.borderRadiusSM,
-                                        ),
-                                      ),
-                                    );
+                                    _showSnackBar('Mesaj gönderilemedi', false);
                                   }
                                 },
-                          icon: isSending
-                              ? SizedBox(
-                                  width: 18,
-                                  height: 18,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: AppColors.border,
+                            padding: EdgeInsets.symmetric(
+                              vertical: AppSpacing.md,
+                            ),
+                          ),
+                          child: isSending
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -1152,24 +1179,11 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
                                     ),
                                   ),
                                 )
-                              : Icon(Icons.send),
-                          label: Text(
-                            isSending ? 'Gönderiliyor...' : 'Gönder',
-                            style: AppTypography.buttonMedium,
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: EdgeInsets.symmetric(
-                              vertical: AppSpacing.md,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: AppRadius.borderRadiusSM,
-                            ),
-                          ),
+                              : const Text('Gönder'),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1179,174 +1193,49 @@ class _HelpSupportPageState extends State<HelpSupportPage> {
     );
   }
 
-  void _showCreateTicketSheet() {
-    final descriptionController = TextEditingController();
-    String selectedCategory = 'Sipariş';
-    final categories = ['Sipariş', 'İade', 'Ürün', 'Kargo', 'Ödeme', 'Diğer'];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Container(
-            padding: EdgeInsets.all(AppSpacing.xl),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(AppRadius.xl),
-              ),
+  void _showSnackBar(String message, bool isSuccess) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isSuccess ? Icons.check_circle : Icons.error_outline,
+              color: Colors.white,
+              size: 20,
             ),
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.85,
-            ),
-            child: SafeArea(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: AppRadius.borderRadiusRound,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.xl),
-                    Center(
-                      child: Text('Destek Talebi', style: AppTypography.h4),
-                    ),
-                    SizedBox(height: AppSpacing.xl),
-                    Text(
-                      'Kategori',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: categories.map((category) {
-                        final isSelected = selectedCategory == category;
-                        return GestureDetector(
-                          onTap: () =>
-                              setSheetState(() => selectedCategory = category),
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.background,
-                              borderRadius: AppRadius.borderRadiusSM,
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppColors.primary
-                                    : AppColors.border,
-                              ),
-                            ),
-                            child: Text(
-                              category,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Açıklama',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: descriptionController,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                        hintText: 'Sorununuzu detaylı açıklayınız',
-                        hintStyle: TextStyle(color: AppColors.textTertiary),
-                        filled: true,
-                        fillColor: AppColors.background,
-                        border: OutlineInputBorder(
-                          borderRadius: AppRadius.borderRadiusSM,
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: EdgeInsets.all(AppSpacing.md),
-                      ),
-                    ),
-                    SizedBox(height: AppSpacing.xl),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  Icon(
-                                    Icons.check_circle,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                  SizedBox(width: AppSpacing.sm),
-                                  Text('Destek talebiniz oluşturuldu'),
-                                ],
-                              ),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.all(AppSpacing.md),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: AppRadius.borderRadiusSM,
-                              ),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: EdgeInsets.symmetric(
-                            vertical: AppSpacing.md,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadius.borderRadiusSM,
-                          ),
-                        ),
-                        child: Text(
-                          'Talep Oluştur',
-                          style: AppTypography.buttonMedium,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+            SizedBox(width: AppSpacing.sm),
+            Expanded(child: Text(message)),
+          ],
         ),
+        backgroundColor: isSuccess ? AppColors.success : AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.all(AppSpacing.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
       ),
     );
+  }
+
+  // URL Launchers
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _launchPhone(String phone) async {
+    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri.parse('tel:$cleaned');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _launchEmail() async {
+    if (_contactInfo?.compEmail == null) return;
+    final uri = Uri.parse('mailto:${_contactInfo!.compEmail}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 }

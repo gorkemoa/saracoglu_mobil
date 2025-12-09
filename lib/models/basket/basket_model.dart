@@ -62,7 +62,6 @@ class UserBasketResponse {
 
 /// Sepet verileri modeli
 class BasketData {
-  final String vatRate;
   final String cartTotal;
   final String subtotal;
   final String vatAmount;
@@ -76,7 +75,6 @@ class BasketData {
   final List<BasketItem> baskets;
 
   BasketData({
-    required this.vatRate,
     required this.cartTotal,
     required this.subtotal,
     required this.vatAmount,
@@ -92,7 +90,6 @@ class BasketData {
 
   factory BasketData.fromJson(Map<String, dynamic> json) {
     return BasketData(
-      vatRate: json['vatRate'] ?? '',
       cartTotal: json['cartTotal'] ?? '0,00 TL',
       subtotal: json['subtotal'] ?? '0,00 TL',
       vatAmount: json['vatAmount'] ?? '0,00 TL',
@@ -127,6 +124,7 @@ class BasketItem {
   final String productTitle;
   final String productShortDesc;
   final String productDesc;
+  final String vatRate;
   final String productImage;
   final int cartQuantity;
   final String productPrice;
@@ -144,6 +142,7 @@ class BasketItem {
     required this.productID,
     required this.variantID,
     required this.productTitle,
+    required this.vatRate,
     required this.productShortDesc,
     required this.productDesc,
     required this.productImage,
@@ -169,6 +168,7 @@ class BasketItem {
       productDesc: json['productDesc'] ?? '',
       productImage: json['productImage'] ?? '',
       cartQuantity: json['cartQuantity'] ?? 0,
+      vatRate: json['vatRate'] ?? '0',
       productPrice: json['productPrice'] ?? '0,00 TL',
       productPriceDiscount: json['productPriceDiscount'] ?? '',
       retailPrice: json['retailPrice'] ?? '0,00 TL',

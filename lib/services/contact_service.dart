@@ -1,6 +1,8 @@
 import 'package:logger/logger.dart';
 import '../core/constants/api_constants.dart';
 import '../models/contact/contact_subject_model.dart';
+import '../models/contact/contact_info_model.dart';
+import '../models/contact/faq_model.dart';
 import 'network_service.dart';
 import 'auth_service.dart';
 
@@ -17,6 +19,90 @@ class ContactService {
 
   /// User token'ı AuthService'den al
   String get _userToken => _authService.token ?? '';
+
+  /// İletişim bilgilerini getir
+  Future<ContactInfoResponse?> getContactInfos() async {
+    try {
+      final endpoint = ApiConstants.getContactInfos;
+
+      _logger.d('📤 Request URL: $endpoint');
+
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = ContactInfoResponse.fromJson(result.data!);
+        if (response.isSuccess) {
+          _logger.i('✅ İletişim bilgileri getirildi');
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ İletişim bilgileri getirilemedi: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ İletişim bilgileri getirme hatası', error: e);
+      return null;
+    }
+  }
+
+  /// FAQ kategorilerini getir
+  Future<FAQCategoriesResponse?> getFAQCategories() async {
+    try {
+      final endpoint = ApiConstants.getFAQCategories;
+
+      _logger.d('📤 Request URL: $endpoint');
+
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = FAQCategoriesResponse.fromJson(result.data!);
+        if (response.isSuccess) {
+          _logger.i('✅ FAQ kategorileri getirildi: ${response.categories.length} kategori');
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ FAQ kategorileri getirilemedi: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ FAQ kategorileri getirme hatası', error: e);
+      return null;
+    }
+  }
+
+  /// FAQ listesini getir
+  Future<FAQListResponse?> getFAQList() async {
+    try {
+      final endpoint = ApiConstants.getFAQList;
+
+      _logger.d('📤 Request URL: $endpoint');
+
+      final result = await _networkService.get(endpoint);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        final response = FAQListResponse.fromJson(result.data!);
+        if (response.isSuccess) {
+          _logger.i('✅ FAQ listesi getirildi: ${response.faqs.length} soru');
+          return response;
+        }
+      }
+
+      _logger.w('⚠️ FAQ listesi getirilemedi: ${result.errorMessage}');
+      return null;
+    } catch (e) {
+      _logger.e('❌ FAQ listesi getirme hatası', error: e);
+      return null;
+    }
+  }
 
   /// İletişim konularını getir
   Future<ContactSubjectsResponse?> getContactSubjects() async {

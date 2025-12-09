@@ -2406,11 +2406,13 @@ class CartPageState extends State<CartPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+           _buildSummaryRow('Sepet Toplamı', _basketData?.cartTotal ?? ''),
+          SizedBox(height: AppSpacing.xs),
           _buildSummaryRow('Ara Toplam', _basketData?.subtotal ?? ''),
           SizedBox(height: AppSpacing.xs),
           if (_basketData != null) ...[
             _buildSummaryRow(
-              'KDV (${_basketData!.vatRate})',
+              'KDV Topamı ',
               _basketData!.vatAmount,
             ),
             SizedBox(height: AppSpacing.xs),
