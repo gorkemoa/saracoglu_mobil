@@ -12,25 +12,18 @@ class OrdersPage extends StatefulWidget {
   State<OrdersPage> createState() => _OrdersPageState();
 }
 
-class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _OrdersPageState extends State<OrdersPage> {
   final OrderService _orderService = OrderService();
-  
+
   bool _isLoading = true;
   String? _errorMessage;
   UserOrdersResponse? _ordersResponse;
+  int? _selectedStatusFilter;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
     _loadOrders();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadOrders() async {
@@ -52,22 +45,30 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   }
 
   List<UserOrder> get _allOrders => _ordersResponse?.orders ?? [];
-  List<UserOrder> get _activeOrders => _ordersResponse?.activeOrders ?? [];
-  List<UserOrder> get _completedOrders => [
-    ..._ordersResponse?.completedOrders ?? [],
-    ..._ordersResponse?.cancelledOrders ?? [],
-    ..._ordersResponse?.returnOrders ?? [],
-  ];
+  
+  List<UserOrder> get _filteredOrders {
+    if (_selectedStatusFilter == null) {
+      return _allOrders;
+    }
+    return _allOrders.where((order) => order.orderStatusID == _selectedStatusFilter).toList();
+  }
 
   Color _getStatusColor(int statusID) {
     switch (statusID) {
-      case 1: case 2: case 3: case 4:
+      case 1:
+      case 2:
+      case 3:
+      case 4:
         return AppColors.info;
       case 5:
         return AppColors.success;
-      case 6: case 7: case 12:
+      case 6:
+      case 7:
+      case 12:
         return AppColors.error;
-      case 8: case 9: case 10:
+      case 8:
+      case 9:
+      case 10:
         return AppColors.warning;
       case 11:
         return AppColors.success;
@@ -86,46 +87,36 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
         scrolledUnderElevation: 1,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: AppColors.textPrimary,
+            size: 20,
+          ),
         ),
         title: Text(
           'Siparişlerim',
           style: AppTypography.h5.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textTertiary,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 2,
-          labelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          tabs: [
-            Tab(text: 'Tümü'),
-            Tab(text: 'Devam Eden'),
-            Tab(text: 'Tamamlanan'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(52),
+          child: _buildStatusLegend(),
         ),
       ),
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
-              ? _buildErrorState()
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildOrderList(_allOrders),
-                    _buildOrderList(_activeOrders),
-                    _buildOrderList(_completedOrders),
-                  ],
-                ),
+          ? _buildErrorState()
+          : _buildOrderList(_filteredOrders),
     );
   }
 
   Widget _buildLoadingState() {
     return Center(
-      child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+      child: CircularProgressIndicator(
+        color: AppColors.primary,
+        strokeWidth: 2,
+      ),
     );
   }
 
@@ -138,13 +129,12 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           SizedBox(height: AppSpacing.md),
           Text(
             _errorMessage ?? 'Bir hata oluştu',
-            style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
           SizedBox(height: AppSpacing.lg),
-          TextButton(
-            onPressed: _loadOrders,
-            child: Text('Tekrar Dene'),
-          ),
+          TextButton(onPressed: _loadOrders, child: Text('Tekrar Dene')),
         ],
       ),
     );
@@ -180,7 +170,9 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
           SizedBox(height: AppSpacing.md),
           Text(
             'Henüz siparişiniz yok',
-            style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
@@ -231,7 +223,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                       SizedBox(height: 2),
                       Text(
                         order.orderDate,
-                        style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textTertiary,
+                        ),
                       ),
                     ],
                   ),
@@ -253,18 +248,18 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                 ),
               ],
             ),
-            
+
             SizedBox(height: AppSpacing.sm),
             Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
             SizedBox(height: AppSpacing.sm),
-            
+
             // Ürünler - Yatay scroll veya stack
             _buildProductsRow(order.products),
-            
+
             SizedBox(height: AppSpacing.sm),
             Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
             SizedBox(height: AppSpacing.sm),
-            
+
             // Footer - Toplam ve Butonlar
             Row(
               children: [
@@ -274,7 +269,10 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                     children: [
                       Text(
                         '${order.totalProduct} ürün',
-                        style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textTertiary,
+                        ),
                       ),
                       SizedBox(width: 8),
                       Text(
@@ -291,12 +289,24 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                 // Butonlar
                 Row(
                   children: [
-                    _buildSmallButton('Detay', false, () {}),
+                    _buildSmallButton('Detay', true, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => OrderDetailPage(
+                            orderID: order.orderID,
+                            orderCode: order.orderCode,
+                          ),
+                        ),
+                      );
+                    }),
                     SizedBox(width: 8),
                     _buildSmallButton(
                       order.orderStatusID <= 4 ? 'Takip' : 'Tekrar Al',
-                      true,
-                      () {},
+                      false,
+                      () {
+                        // TODO: Kargo takip veya tekrar sipariş
+                      },
                     ),
                   ],
                 ),
@@ -337,7 +347,8 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                           ? Image.network(
                               product.productImage,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _buildImagePlaceholder(),
+                              errorBuilder: (_, __, ___) =>
+                                  _buildImagePlaceholder(),
                             )
                           : _buildImagePlaceholder(),
                     ),
@@ -372,8 +383,8 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
                           product.productName,
                           style: TextStyle(
                             fontSize: 12,
-                            color: product.productIsCanceled 
-                                ? AppColors.textTertiary 
+                            color: product.productIsCanceled
+                                ? AppColors.textTertiary
                                 : AppColors.textPrimary,
                           ),
                           maxLines: 1,
@@ -427,7 +438,66 @@ class _OrdersPageState extends State<OrdersPage> with SingleTickerProviderStateM
   Widget _buildImagePlaceholder() {
     return Container(
       color: AppColors.background,
-      child: Icon(Icons.image_outlined, color: AppColors.textTertiary, size: 16),
+      child: Icon(
+        Icons.image_outlined,
+        color: AppColors.textTertiary,
+        size: 16,
+      ),
+    );
+  }
+
+  Widget _buildStatusLegend() {
+    if (_ordersResponse == null) {
+      return SizedBox.shrink();
+    }
+
+    final statusTitles = _ordersResponse!.statusTitles;
+    
+    return Container(
+      height: 52,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        itemCount: statusTitles.length + 1,
+        separatorBuilder: (_, __) => SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final isAllFilter = index == 0;
+          final statusId = isAllFilter ? null : statusTitles[index - 1].statusID;
+          final statusName = isAllFilter ? 'Tümü' : statusTitles[index - 1].statusName;
+          final isSelected = _selectedStatusFilter == statusId;
+          
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _selectedStatusFilter = statusId;
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : AppColors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: 1,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  statusName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

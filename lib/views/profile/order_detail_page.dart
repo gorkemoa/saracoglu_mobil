@@ -77,56 +77,71 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   IconData _getStatusIcon(int statusID) {
     switch (statusID) {
       case 1:
-        return Icons.hourglass_empty_rounded;
+        return Icons.pending_outlined;
       case 2:
-        return Icons.check_circle_outline_rounded;
+        return Icons.check_circle_outline;
       case 3:
         return Icons.inventory_2_outlined;
       case 4:
         return Icons.local_shipping_outlined;
       case 5:
-        return Icons.check_circle_rounded;
+        return Icons.task_alt;
       case 6:
       case 7:
       case 12:
         return Icons.cancel_outlined;
-      case 8:
-      case 9:
-      case 10:
-        return Icons.assignment_return_outlined;
-      case 11:
-        return Icons.thumb_up_alt_outlined;
       default:
-        return Icons.info_outline_rounded;
+        return Icons.info_outline;
     }
   }
 
   Future<void> _openUrl(String url) async {
     if (url.isEmpty) return;
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 
-  void _copyToClipboard(String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('\$label kopyalandı'),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(AppSpacing.md),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    // URL validasyonu - HTML içeriği veya geçersiz URL kontrolü
+    if (url.contains('<') || url.contains('>') || !url.startsWith('http')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Geçersiz URL formatı'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('URL açılamadı'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            size: 20,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        title: Text('Sipariş Detayı', style: AppTypography.h5),
+        centerTitle: true,
+      ),
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
@@ -136,253 +151,122 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildLoadingState() {
-    return CustomScrollView(
-      slivers: [
-        _buildAppBar(),
-        SliverFillRemaining(
-          child: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAppBar() {
-    return SliverAppBar(
-      backgroundColor: AppColors.surface,
-      pinned: true,
-      elevation: 0,
-      scrolledUnderElevation: 2,
-      leading: IconButton(
-        onPressed: () => Navigator.pop(context),
-        icon: Icon(
-          Icons.arrow_back_ios,
-          color: AppColors.textPrimary,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        widget.orderCode,
-        style: AppTypography.h5.copyWith(color: AppColors.textPrimary),
-      ),
-      centerTitle: true,
-      actions: [
-        if (_orderDetail?.isCancelVisible == true)
-          IconButton(
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              _showCancelDialog();
-            },
-            icon: Icon(Icons.close_rounded, color: AppColors.error, size: 22),
-          ),
-      ],
-    );
+    return Center(child: CircularProgressIndicator(color: AppColors.primary));
   }
 
   Widget _buildErrorState() {
-    return CustomScrollView(
-      slivers: [
-        _buildAppBar(),
-        SliverFillRemaining(
-          child: Center(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.xxl),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.error_outline,
-                      size: 40,
-                      color: AppColors.error,
-                    ),
-                  ),
-                  SizedBox(height: AppSpacing.lg),
-                  Text('Bir Hata Oluştu', style: AppTypography.h4),
-                  SizedBox(height: AppSpacing.sm),
-                  Text(
-                    _errorMessage ?? 'Sipariş detayları yüklenemedi',
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: AppSpacing.xl),
-                  ElevatedButton.icon(
-                    onPressed: _loadOrderDetail,
-                    icon: Icon(Icons.refresh),
-                    label: Text(
-                      'Tekrar Dene',
-                      style: AppTypography.buttonMedium,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: AppSpacing.xl,
-                        vertical: AppSpacing.md,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.borderRadiusSM,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.xxl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 64, color: AppColors.error),
+            SizedBox(height: AppSpacing.lg),
+            Text(
+              _errorMessage ?? 'Sipariş detayları yüklenemedi',
+              style: AppTypography.bodyMedium,
+              textAlign: TextAlign.center,
             ),
-          ),
+            SizedBox(height: AppSpacing.xl),
+            ElevatedButton(
+              onPressed: _loadOrderDetail,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xl,
+                  vertical: AppSpacing.md,
+                ),
+              ),
+              child: Text('Tekrar Dene'),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildContent() {
     final order = _orderDetail!;
-    final statusColor = _getStatusColor(order.statusID);
 
     return RefreshIndicator(
       onRefresh: _loadOrderDetail,
       color: AppColors.primary,
-      child: CustomScrollView(
-        slivers: [
-          _buildAppBar(),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          // Sipariş Durumu
+          _buildStatusHeader(order),
 
-          // Durum Banner
-          SliverToBoxAdapter(child: _buildStatusBanner(order, statusColor)),
+          // Ürünler
+          _buildProductsSection(order),
 
-          // İçerik
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Sipariş Bilgileri
-                  _buildOrderInfoCard(order),
-                  SizedBox(height: AppSpacing.md),
+          // Sipariş Bilgileri
+          _buildInfoCard('Sipariş Bilgileri', [
+            _InfoItem('Sipariş No', order.orderCode),
+            _InfoItem('Tarih', order.orderDate),
+            _InfoItem('Ödeme', order.orderPaymentType),
+          ]),
 
-                  // Ürünler
-                  _buildSectionTitle(
-                    'Ürünler',
-                    Icons.shopping_bag_outlined,
-                    order.products.length,
-                  ),
-                  SizedBox(height: AppSpacing.sm),
-                  ...order.products.map(
-                    (product) => Padding(
-                      padding: EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: _buildProductCard(product),
-                    ),
-                  ),
+          // Teslimat Adresi
+          if (order.addresses?.shipping != null)
+            _buildAddressCard('Teslimat Adresi', order.addresses!.shipping!),
 
-                  // Teslimat Adresi
-                  if (order.addresses?.shipping != null) ...[
-                    SizedBox(height: AppSpacing.md),
-                    _buildSectionTitle(
-                      'Teslimat Adresi',
-                      Icons.local_shipping_outlined,
-                      null,
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    _buildAddressCard(
-                      order.addresses!.shipping!,
-                      isShipping: true,
-                    ),
-                  ],
+          // Fatura Adresi
+          if (order.addresses?.billing != null &&
+              order.addresses!.billing!.address !=
+                  order.addresses!.shipping!.address)
+            _buildAddressCard('Fatura Adresi', order.addresses!.billing!),
 
-                  // Fatura Adresi
-                  if (order.addresses?.billing != null) ...[
-                    SizedBox(height: AppSpacing.md),
-                    _buildSectionTitle(
-                      'Fatura Adresi',
-                      Icons.receipt_long_outlined,
-                      null,
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    _buildAddressCard(
-                      order.addresses!.billing!,
-                      isShipping: false,
-                    ),
-                  ],
+          // Ödeme Detayı
+          if (order.cardInfo != null)
+            _buildPaymentCard(order.cardInfo!, order.orderPaymentType),
 
-                  // Ödeme Bilgisi
-                  if (order.cardInfo != null) ...[
-                    SizedBox(height: AppSpacing.md),
-                    _buildSectionTitle(
-                      'Ödeme Bilgisi',
-                      Icons.payment_outlined,
-                      null,
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    _buildPaymentCard(order.cardInfo!, order.orderPaymentType),
-                  ],
+          // Sipariş Özeti
+          _buildPriceSummary(order),
 
-                  // Sipariş Özeti
-                  SizedBox(height: AppSpacing.md),
-                  _buildSectionTitle(
-                    'Sipariş Özeti',
-                    Icons.summarize_outlined,
-                    null,
-                  ),
-                  SizedBox(height: AppSpacing.sm),
-                  _buildSummaryCard(order),
+          // Sipariş Notu
+          if (order.orderDesc.isNotEmpty) _buildNoteSection(order.orderDesc),
 
-                  // Sipariş Notu
-                  if (order.orderDesc.isNotEmpty) ...[
-                    SizedBox(height: AppSpacing.md),
-                    _buildSectionTitle(
-                      'Sipariş Notu',
-                      Icons.note_outlined,
-                      null,
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                    _buildNoteCard(order.orderDesc),
-                  ],
+          // Alt Butonlar
+          _buildBottomActions(order),
 
-                  // Alt Butonlar
-                  SizedBox(height: AppSpacing.xl),
-                  _buildActionButtons(order),
-
-                  SizedBox(height: AppSpacing.xxl),
-                ],
-              ),
-            ),
-          ),
+          SizedBox(height: AppSpacing.xxl),
         ],
       ),
     );
   }
 
-  Widget _buildStatusBanner(OrderDetail order, Color statusColor) {
+  Widget _buildStatusHeader(OrderDetail order) {
+    final statusColor = _getStatusColor(order.statusID);
+
     return Container(
       margin: EdgeInsets.all(AppSpacing.md),
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: statusColor.withOpacity(0.08),
-        borderRadius: AppRadius.borderRadiusSM,
-        border: Border.all(color: statusColor.withOpacity(0.2)),
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusMD,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(10),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.15),
-              shape: BoxShape.circle,
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               _getStatusIcon(order.statusID),
-              size: 24,
               color: statusColor,
+              size: 24,
             ),
           ),
           SizedBox(width: AppSpacing.md),
@@ -392,12 +276,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               children: [
                 Text(
                   order.orderStatus,
-                  style: AppTypography.labelLarge.copyWith(color: statusColor),
+                  style: AppTypography.h5.copyWith(color: statusColor),
                 ),
                 if (order.deliveryDate.isNotEmpty) ...[
-                  SizedBox(height: 2),
+                  SizedBox(height: 4),
                   Text(
-                    'Tahmini Teslimat: \${order.deliveryDate}',
+                    order.deliveryDate,
                     style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -411,238 +295,120 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  Widget _buildSectionTitle(String title, IconData icon, int? count) {
-    return Row(
+  Widget _buildProductsSection(OrderDetail order) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        SizedBox(width: AppSpacing.sm),
-        Text(title, style: AppTypography.h5),
-        if (count != null) ...[
-          SizedBox(width: AppSpacing.sm),
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              '\$count',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.md,
+            AppSpacing.sm,
+            AppSpacing.md,
+            AppSpacing.sm,
           ),
-        ],
+          child: Text(
+            'Ürünler (${order.products.length})',
+            style: AppTypography.h5,
+          ),
+        ),
+        ...order.products.map((product) => _buildProductItem(product)),
       ],
     );
   }
 
-  Widget _buildOrderInfoCard(OrderDetail order) {
+  Widget _buildProductItem(OrderDetailProduct product) {
+    final statusColor = _getProductStatusColor(product.productStatus);
+
     return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs / 2,
+      ),
       padding: EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.borderRadiusMD,
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
       ),
       child: Column(
         children: [
-          _buildInfoRow(
-            'Sipariş No',
-            order.orderCode,
-            Icons.tag_rounded,
-            isCopyable: true,
-          ),
-          _buildDivider(),
-          _buildInfoRow(
-            'Sipariş Tarihi',
-            order.orderDate,
-            Icons.calendar_today_outlined,
-          ),
-          _buildDivider(),
-          _buildInfoRow(
-            'Ödeme Tipi',
-            order.orderPaymentType,
-            Icons.payment_outlined,
-          ),
-          if (order.orderInvoice.isNotEmpty) ...[
-            _buildDivider(),
-            _buildInfoRow(
-              'Fatura',
-              'Görüntüle',
-              Icons.description_outlined,
-              isLink: true,
-              onTap: () => _openUrl(order.orderInvoice),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(
-    String label,
-    String value,
-    IconData icon, {
-    bool isCopyable = false,
-    bool isLink = false,
-    VoidCallback? onTap,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: AppColors.textTertiary),
-          SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Ürün Görseli
+              ClipRRect(
+                borderRadius: AppRadius.borderRadiusSM,
+                child: Image.network(
+                  product.productImage,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 80,
+                    height: 80,
+                    color: AppColors.background,
+                    child: Icon(Icons.image_outlined, size: 32),
+                  ),
+                ),
               ),
-            ),
-          ),
-          GestureDetector(
-            onTap: isCopyable
-                ? () {
-                    HapticFeedback.lightImpact();
-                    _copyToClipboard(value, label);
-                  }
-                : isLink
-                ? onTap
-                : null,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  value,
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: isLink ? AppColors.primary : AppColors.textPrimary,
-                  ),
-                ),
-                if (isCopyable) ...[
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.copy_rounded,
-                    size: 14,
-                    color: AppColors.textTertiary,
-                  ),
-                ],
-                if (isLink) ...[
-                  SizedBox(width: 4),
-                  Icon(
-                    Icons.open_in_new_rounded,
-                    size: 14,
-                    color: AppColors.primary,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              SizedBox(width: AppSpacing.md),
 
-  Widget _buildDivider() {
-    return Divider(color: AppColors.border.withOpacity(0.5), height: 1);
-  }
-
-  Widget _buildProductCard(OrderDetailProduct product) {
-    final statusColor = _getProductStatusColor(product.productStatus);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
-      ),
-      child: Column(
-        children: [
-          // Ürün Bilgileri
-          Padding(
-            padding: EdgeInsets.all(AppSpacing.md),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Ürün Görseli
-                ClipRRect(
-                  borderRadius: AppRadius.borderRadiusSM,
-                  child: Image.network(
-                    product.productImage,
-                    width: 70,
-                    height: 70,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 70,
-                      height: 70,
-                      color: AppColors.background,
-                      child: Icon(
-                        Icons.image_outlined,
-                        color: AppColors.textTertiary,
-                        size: 28,
-                      ),
+              // Ürün Bilgileri
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.productName,
+                      style: AppTypography.labelMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                ),
-                SizedBox(width: AppSpacing.md),
-                // Ürün Detayları
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                    if (product.productVariants.isNotEmpty) ...[
+                      SizedBox(height: 4),
                       Text(
-                        product.productName,
-                        style: AppTypography.labelLarge,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                        product.productVariants,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-                      if (product.productVariants.isNotEmpty) ...[
-                        SizedBox(height: 2),
+                    ],
+                    SizedBox(height: AppSpacing.sm),
+                    Row(
+                      children: [
                         Text(
-                          product.productVariants,
+                          '${product.productQuantity} Adet',
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.textSecondary,
                           ),
                         ),
+                        Spacer(),
+                        Text(
+                          product.productPrice,
+                          style: AppTypography.h5.copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
-                      SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Text(
-                            '\${product.productQuantity} Adet',
-                            style: AppTypography.bodySmall.copyWith(
-                              color: AppColors.textTertiary,
-                            ),
-                          ),
-                          Spacer(),
-                          Text(
-                            product.productPrice,
-                            style: AppTypography.priceMain,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
 
-          // Ürün Durumu
+          SizedBox(height: AppSpacing.md),
+
+          // Durum
           Container(
+            width: double.infinity,
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.sm,
             ),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.08),
-              border: Border(
-                top: BorderSide(color: AppColors.border.withOpacity(0.5)),
-              ),
+              color: statusColor.withOpacity(0.1),
+              borderRadius: AppRadius.borderRadiusSM,
             ),
             child: Row(
               children: [
@@ -652,16 +418,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   color: statusColor,
                 ),
                 SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    product.productStatusName.isNotEmpty
-                        ? product.productStatusName
-                        : product.productStatusText,
-                    style: AppTypography.labelSmall.copyWith(
-                      color: statusColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                Text(
+                  product.productStatusName.isNotEmpty
+                      ? product.productStatusName
+                      : product.productStatusText,
+                  style: AppTypography.labelSmall.copyWith(color: statusColor),
                 ),
               ],
             ),
@@ -669,183 +430,67 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
           // Kargo Takip
           if (product.trackingNumber.isNotEmpty) ...[
-            Container(
-              padding: EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.info.withOpacity(0.05),
-                border: Border(
-                  top: BorderSide(color: AppColors.border.withOpacity(0.5)),
+            SizedBox(height: AppSpacing.sm),
+            InkWell(
+              onTap: () => _openUrl(product.trackingURL),
+              child: Container(
+                padding: EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: AppRadius.borderRadiusSM,
                 ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          product.cargoCompany.isNotEmpty
-                              ? product.cargoCompany
-                              : 'Kargo Firması',
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            _copyToClipboard(
-                              product.trackingNumber,
-                              'Takip numarası',
-                            );
-                          },
-                          child: Row(
-                            children: [
-                              Text(
-                                product.trackingNumber,
-                                style: AppTypography.labelMedium.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(
-                                Icons.copy_rounded,
-                                size: 14,
-                                color: AppColors.textTertiary,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (product.trackingURL.isNotEmpty)
-                    _buildSmallButton(
-                      'Takip Et',
-                      true,
-                      () => _openUrl(product.trackingURL),
-                    ),
-                ],
-              ),
-            ),
-          ],
-
-          // İptal Bilgisi
-          if (product.isCanceled) ...[
-            Container(
-              padding: EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.05),
-                border: Border(
-                  top: BorderSide(color: AppColors.error.withOpacity(0.2)),
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(AppRadius.md),
-                  bottomRight: Radius.circular(AppRadius.md),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.cancel_outlined,
-                        size: 16,
-                        color: AppColors.error,
-                      ),
-                      SizedBox(width: AppSpacing.sm),
-                      Text(
-                        'İptal Edildi',
-                        style: AppTypography.labelSmall.copyWith(
-                          color: AppColors.error,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Spacer(),
-                      if (product.cancelDate.isNotEmpty)
-                        Text(
-                          product.cancelDate,
-                          style: AppTypography.bodySmall.copyWith(
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (product.cancelDesc.isNotEmpty) ...[
-                    SizedBox(height: AppSpacing.sm),
-                    Text(
-                      product.cancelDesc,
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.error.withOpacity(0.8),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-
-          // Değerlendirme veya İptal Butonu
-          if (!product.isCanceled &&
-              (product.isRating || product.isCancelable)) ...[
-            Container(
-              padding: EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(color: AppColors.border.withOpacity(0.5)),
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(AppRadius.md),
-                  bottomRight: Radius.circular(AppRadius.md),
-                ),
-              ),
-              child: Row(
-                children: [
-                  if (product.isRating) ...[
+                child: Row(
+                  children: [
                     Icon(
-                      Icons.star_outline_rounded,
+                      Icons.local_shipping_outlined,
                       size: 18,
-                      color: AppColors.warning,
+                      color: AppColors.info,
                     ),
                     SizedBox(width: AppSpacing.sm),
-                    Text(
-                      'Bu ürünü değerlendirin',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.cargoCompany.isNotEmpty
+                                ? product.cargoCompany
+                                : 'Kargo',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            product.trackingNumber,
+                            style: AppTypography.labelSmall,
+                          ),
+                        ],
                       ),
                     ),
-                    Spacer(),
-                    _buildSmallButton('Değerlendir', false, () {
-                      HapticFeedback.lightImpact();
-                      // TODO: Değerlendirme sayfasına git
-                    }),
-                  ] else if (product.isCancelable) ...[
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          // TODO: Ürün iptal işlemi
-                        },
-                        icon: Icon(Icons.cancel_outlined, size: 16),
-                        label: Text('Ürünü İptal Et'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error,
-                          side: BorderSide(
-                            color: AppColors.error.withOpacity(0.5),
-                          ),
-                          padding: EdgeInsets.symmetric(
-                            vertical: AppSpacing.sm,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadius.borderRadiusSM,
-                          ),
-                        ),
-                      ),
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: AppColors.textSecondary,
                     ),
                   ],
-                ],
+                ),
+              ),
+            ),
+          ],
+
+          // Değerlendirme Butonu (Teslim edilen ürünler için)
+          if (product.productStatus == 5 && !product.isCanceled) ...[
+            SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showReviewDialog(product),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.warning,
+                  side: BorderSide(color: AppColors.warning),
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                ),
+                icon: Icon(Icons.star_outline, size: 18),
+                label: Text('Ürünü Değerlendir'),
               ),
             ),
           ],
@@ -874,211 +519,135 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   IconData _getProductStatusIcon(int status) {
     switch (status) {
       case 1:
-        return Icons.hourglass_empty_rounded;
+        return Icons.pending_outlined;
       case 2:
-        return Icons.check_circle_outline_rounded;
+        return Icons.check_circle_outline;
       case 3:
         return Icons.inventory_2_outlined;
       case 4:
         return Icons.local_shipping_outlined;
       case 5:
-        return Icons.check_circle_rounded;
+        return Icons.task_alt;
       case 6:
         return Icons.cancel_outlined;
       default:
-        return Icons.info_outline_rounded;
+        return Icons.info_outline;
     }
   }
 
-  Widget _buildAddressCard(OrderAddress address, {required bool isShipping}) {
-    final fullAddress = [
-      address.address,
-      address.addressNeighbourhood,
-      address.addressDistrict,
-      address.addressCity,
-    ].where((s) => s.isNotEmpty).join(', ');
-
+  Widget _buildInfoCard(String title, List<_InfoItem> items) {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      margin: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        0,
+      ),
+      padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.borderRadiusMD,
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Başlık
-          Row(
-            children: [
-              Container(
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: (isShipping ? AppColors.info : AppColors.primary)
-                      .withOpacity(0.1),
-                  borderRadius: AppRadius.borderRadiusSM,
-                ),
-                child: Icon(
-                  isShipping
-                      ? Icons.local_shipping_outlined
-                      : Icons.receipt_long_outlined,
-                  size: 20,
-                  color: isShipping ? AppColors.info : AppColors.primary,
-                ),
-              ),
-              SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      address.addressTitle.isNotEmpty
-                          ? address.addressTitle
-                          : (isShipping ? 'Teslimat Adresi' : 'Fatura Adresi'),
-                      style: AppTypography.labelLarge,
+          Text(title, style: AppTypography.h5),
+          SizedBox(height: AppSpacing.md),
+          ...items.map(
+            (item) => Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    item.label,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
                     ),
-                    if (address.addressType.isNotEmpty)
-                      Text(
-                        address.addressType,
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                  Text(item.value, style: AppTypography.labelMedium),
+                ],
               ),
-            ],
-          ),
-          SizedBox(height: AppSpacing.md),
-          Divider(color: AppColors.border.withOpacity(0.5), height: 1),
-          SizedBox(height: AppSpacing.md),
-
-          // Detaylar
-          _buildAddressDetailRow(
-            Icons.person_outline_rounded,
-            'Alıcı',
-            address.addressName,
-          ),
-          SizedBox(height: AppSpacing.sm),
-          _buildAddressDetailRow(
-            Icons.phone_outlined,
-            'Telefon',
-            address.addressPhone,
-          ),
-          if (address.addressEmail.isNotEmpty) ...[
-            SizedBox(height: AppSpacing.sm),
-            _buildAddressDetailRow(
-              Icons.email_outlined,
-              'E-posta',
-              address.addressEmail,
             ),
-          ],
-          SizedBox(height: AppSpacing.sm),
-          _buildAddressDetailRow(
-            Icons.location_on_outlined,
-            'Adres',
-            fullAddress,
           ),
-
-          // Fatura ek bilgileri
-          if (!isShipping) ...[
-            if (address.identityNumber.isNotEmpty) ...[
-              SizedBox(height: AppSpacing.sm),
-              _buildAddressDetailRow(
-                Icons.badge_outlined,
-                'TC Kimlik No',
-                address.identityNumber,
-              ),
-            ],
-            if (address.realCompanyName.isNotEmpty) ...[
-              SizedBox(height: AppSpacing.sm),
-              _buildAddressDetailRow(
-                Icons.business_outlined,
-                'Firma',
-                address.realCompanyName,
-              ),
-            ],
-            if (address.taxNumber.isNotEmpty) ...[
-              SizedBox(height: AppSpacing.sm),
-              _buildAddressDetailRow(
-                Icons.receipt_outlined,
-                'Vergi No',
-                address.taxNumber,
-              ),
-            ],
-            if (address.taxAdministration.isNotEmpty) ...[
-              SizedBox(height: AppSpacing.sm),
-              _buildAddressDetailRow(
-                Icons.account_balance_outlined,
-                'Vergi Dairesi',
-                address.taxAdministration,
-              ),
-            ],
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildAddressDetailRow(IconData icon, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 16, color: AppColors.textTertiary),
-        SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: AppTypography.labelSmall),
-              SizedBox(height: 2),
-              Text(value, style: AppTypography.bodyMedium),
-            ],
+  Widget _buildAddressCard(String title, OrderAddress address) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        0,
+      ),
+      padding: EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusMD,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppTypography.h5),
+          SizedBox(height: AppSpacing.md),
+          Text(address.addressName, style: AppTypography.labelMedium),
+          SizedBox(height: 4),
+          Text(
+            address.addressPhone,
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
-        ),
-      ],
+          SizedBox(height: AppSpacing.sm),
+          Text(
+            [
+              address.address,
+              address.addressNeighbourhood,
+              address.addressDistrict,
+              address.addressCity,
+            ].where((s) => s.isNotEmpty).join(', '),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPaymentCard(OrderCardInfo cardInfo, String paymentType) {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      margin: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        0,
+      ),
+      padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.borderRadiusMD,
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Kart Bilgisi
+          Text('Ödeme', style: AppTypography.h5),
+          SizedBox(height: AppSpacing.md),
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.textPrimary,
-                  borderRadius: AppRadius.borderRadiusSM,
-                ),
-                child: Icon(
-                  Icons.credit_card_rounded,
-                  size: 24,
-                  color: Colors.white,
-                ),
-              ),
+              Icon(Icons.credit_card, color: AppColors.textSecondary, size: 20),
               SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(cardInfo.cardNumber, style: AppTypography.labelMedium),
+                    SizedBox(height: 4),
                     Text(
-                      cardInfo.cardNumber,
-                      style: AppTypography.labelLarge.copyWith(
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      cardInfo.cardHolder.toUpperCase(),
+                      paymentType,
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -1086,255 +655,167 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                   ],
                 ),
               ),
-              if (cardInfo.cardAssociation.isNotEmpty)
-                Text(
-                  cardInfo.cardAssociation.toUpperCase(),
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
             ],
           ),
-          if (cardInfo.cardBankName.isNotEmpty) ...[
-            SizedBox(height: AppSpacing.sm),
-            Divider(color: AppColors.border.withOpacity(0.5), height: 1),
-            SizedBox(height: AppSpacing.sm),
-            Row(
-              children: [
-                Icon(
-                  Icons.account_balance_outlined,
-                  size: 16,
-                  color: AppColors.textTertiary,
-                ),
-                SizedBox(width: AppSpacing.sm),
-                Text(
-                  cardInfo.cardBankName,
-                  style: AppTypography.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Spacer(),
-                Text(paymentType, style: AppTypography.labelMedium),
-              ],
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard(OrderDetail order) {
+  Widget _buildPriceSummary(OrderDetail order) {
     final hasDiscount =
         order.orderDiscount.isNotEmpty &&
         order.orderDiscount != '0' &&
-        order.orderDiscount != '0,00 TL' &&
-        order.orderDiscount != '0.00 TL';
+        !order.orderDiscount.contains('0,00') &&
+        !order.orderDiscount.contains('0.00');
 
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      margin: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        0,
+      ),
+      padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.borderRadiusMD,
-        border: Border.all(color: AppColors.border.withOpacity(0.5)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSummaryRow(
-            'Ürün Sayısı',
-            '\${order.products.length} Adet',
-            Icons.shopping_bag_outlined,
+          Text('Sipariş Özeti', style: AppTypography.h5),
+          SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Ürün Sayısı',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                '${order.products.length} Adet',
+                style: AppTypography.labelMedium,
+              ),
+            ],
           ),
           if (hasDiscount) ...[
             SizedBox(height: AppSpacing.sm),
-            _buildSummaryRow(
-              'İndirim',
-              '-\${order.orderDiscount}',
-              Icons.discount_outlined,
-              valueColor: AppColors.success,
-            ),
-          ],
-          SizedBox(height: AppSpacing.md),
-          Container(
-            padding: EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.08),
-              borderRadius: AppRadius.borderRadiusSM,
-            ),
-            child: Row(
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Toplam Tutar', style: AppTypography.labelLarge),
                 Text(
-                  order.orderAmount,
-                  style: AppTypography.priceLarge.copyWith(fontSize: 18),
+                  'İndirim',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  '-${order.orderDiscount}',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.success,
+                  ),
                 ),
               ],
             ),
+          ],
+          SizedBox(height: AppSpacing.md),
+          Divider(height: 1),
+          SizedBox(height: AppSpacing.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Toplam', style: AppTypography.h5),
+              Text(
+                order.orderAmount,
+                style: AppTypography.h4.copyWith(color: AppColors.primary),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(
-    String label,
-    String value,
-    IconData icon, {
-    Color? valueColor,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: AppColors.textTertiary),
-        SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            label,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: AppTypography.labelMedium.copyWith(
-            fontWeight: FontWeight.w600,
-            color: valueColor ?? AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNoteCard(String note) {
+  Widget _buildNoteSection(String note) {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      margin: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        0,
+      ),
+      padding: EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: AppColors.warning.withOpacity(0.08),
         borderRadius: AppRadius.borderRadiusMD,
-        border: Border.all(color: AppColors.warning.withOpacity(0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.note_outlined, size: 18, color: AppColors.warning),
-          SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(note, style: AppTypography.bodyMedium)),
+          Icon(Icons.note_outlined, size: 20, color: AppColors.warning),
+          SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sipariş Notu',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.warning,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(note, style: AppTypography.bodyMedium),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons(OrderDetail order) {
-    return Column(
-      children: [
-        // Ana butonlar
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
+  Widget _buildBottomActions(OrderDetail order) {
+    return Container(
+      margin: EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+        0,
+      ),
+      child: Column(
+        children: [
+          if (order.isCancelVisible)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
                 onPressed: () {
-                  HapticFeedback.lightImpact();
-                  // TODO: Yardım sayfasına git
+                  HapticFeedback.mediumImpact();
+                  _showCancelDialog();
                 },
-                icon: Icon(Icons.help_outline_rounded, size: 18),
-                label: Text('Yardım'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: BorderSide(color: AppColors.border),
+                  foregroundColor: AppColors.error,
+                  side: BorderSide(color: AppColors.error),
                   padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.borderRadiusSM,
-                  ),
                 ),
+                child: Text('Siparişi İptal Et'),
               ),
             ),
-            SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  // TODO: Tekrar sipariş ver
-                },
-                icon: Icon(Icons.replay_rounded, size: 18),
-                label: Text('Tekrar Sipariş'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.borderRadiusSM,
-                  ),
-                  elevation: 0,
+          if (order.salesAgreement.isNotEmpty) ...[
+            SizedBox(height: AppSpacing.sm),
+            TextButton(
+              onPressed: () => _showSalesAgreement(order.salesAgreement),
+              child: Text(
+                'Mesafeli Satış Sözleşmesi',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
             ),
           ],
-        ),
-
-        // Sipariş iptal butonu
-        if (order.isCancelVisible) ...[
-          SizedBox(height: AppSpacing.sm),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                HapticFeedback.mediumImpact();
-                _showCancelDialog();
-              },
-              icon: Icon(Icons.cancel_outlined, size: 18),
-              label: Text('Siparişi İptal Et'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: BorderSide(color: AppColors.error.withOpacity(0.5)),
-                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppRadius.borderRadiusSM,
-                ),
-              ),
-            ),
-          ),
         ],
-
-        // Satış sözleşmesi
-        if (order.salesAgreement.isNotEmpty) ...[
-          SizedBox(height: AppSpacing.md),
-          TextButton(
-            onPressed: () => _openUrl(order.salesAgreement),
-            child: Text(
-              'Mesafeli Satış Sözleşmesi',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textTertiary,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSmallButton(String label, bool isPrimary, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isPrimary ? AppColors.primary : Colors.transparent,
-          borderRadius: AppRadius.borderRadiusSM,
-          border: isPrimary ? null : Border.all(color: AppColors.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isPrimary ? Colors.white : AppColors.textSecondary,
-          ),
-        ),
       ),
     );
   }
@@ -1343,39 +824,287 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-            SizedBox(width: AppSpacing.sm),
-            Text('Sipariş İptali', style: AppTypography.h4),
-          ],
-        ),
-        content: Text(
-          'Bu siparişi iptal etmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
-          style: AppTypography.bodyMedium,
-        ),
+        title: Text('Siparişi İptal Et'),
+        content: Text('Bu siparişi iptal etmek istediğinize emin misiniz?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Vazgeç',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
+            child: Text('Vazgeç'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               // TODO: İptal işlemi
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: Text('İptal Et'),
           ),
         ],
       ),
     );
   }
+
+  void _showSalesAgreement(String htmlContent) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: Column(
+            children: [
+              // Başlık
+              Container(
+                padding: EdgeInsets.all(AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(bottom: BorderSide(color: AppColors.border)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Mesafeli Satış Sözleşmesi',
+                        style: AppTypography.h5,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close),
+                      padding: EdgeInsets.zero,
+                      constraints: BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+              // İçerik
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.all(AppSpacing.lg),
+                  child: _buildHtmlContent(htmlContent),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHtmlContent(String html) {
+    // Basit HTML parse (temel etiketler için)
+    String cleanedText = html
+        .replaceAll(RegExp(r'<[^>]*>'), '') // HTML etiketlerini kaldır
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&Ouml;', 'Ö')
+        .replaceAll('&ouml;', 'ö')
+        .replaceAll('&Uuml;', 'Ü')
+        .replaceAll('&uuml;', 'ü')
+        .replaceAll('&Ccedil;', 'Ç')
+        .replaceAll('&ccedil;', 'ç')
+        .replaceAll('&Iuml;', 'İ')
+        .replaceAll('&iuml;', 'i')
+        .replaceAll('&Gbreve;', 'Ğ')
+        .replaceAll('&gbreve;', 'ğ')
+        .replaceAll('&Scedil;', 'Ş')
+        .replaceAll('&scedil;', 'ş')
+        .replaceAll('&ldquo;', '"')
+        .replaceAll('&rdquo;', '"')
+        .replaceAll('&lsquo;', "'")
+        .replaceAll('&rsquo;', "'")
+        .replaceAll('&quot;', '"')
+        .replaceAll('&amp;', '&')
+        .trim();
+
+    return Text(cleanedText, style: AppTypography.bodyMedium);
+  }
+
+  void _showReviewDialog(OrderDetailProduct product) {
+    int selectedRating = 0;
+    final TextEditingController commentController = TextEditingController();
+    bool showName = true;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Ürünü Değerlendir'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Ürün Bilgisi
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        product.productImage,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 50,
+                          height: 50,
+                          color: AppColors.background,
+                          child: Icon(Icons.image_outlined, size: 24),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Text(
+                        product.productName,
+                        style: AppTypography.labelMedium,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.lg),
+
+                // Puan
+                Text('Puanınız', style: AppTypography.labelMedium),
+                SizedBox(height: AppSpacing.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    return IconButton(
+                      onPressed: () {
+                        setState(() {
+                          selectedRating = index + 1;
+                        });
+                      },
+                      icon: Icon(
+                        selectedRating > index ? Icons.star : Icons.star_border,
+                        color: AppColors.warning,
+                        size: 32,
+                      ),
+                    );
+                  }),
+                ),
+                SizedBox(height: AppSpacing.md),
+
+                // Yorum
+                Text('Yorumunuz', style: AppTypography.labelMedium),
+                SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: commentController,
+                  maxLines: 4,
+                  maxLength: 500,
+                  decoration: InputDecoration(
+                    hintText: 'Ürün hakkında düşüncelerinizi paylaşın...',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                SizedBox(height: AppSpacing.sm),
+
+                // İsim göster
+                CheckboxListTile(
+                  title: Text('Adımı göster', style: AppTypography.bodyMedium),
+                  value: showName,
+                  onChanged: (value) {
+                    setState(() {
+                      showName = value ?? true;
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: selectedRating > 0 && commentController.text.isNotEmpty
+                  ? () {
+                      Navigator.pop(context);
+                      _submitReview(
+                        product.productID,
+                        commentController.text,
+                        selectedRating,
+                        showName,
+                      );
+                    }
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              child: Text('Gönder'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitReview(
+    int productID,
+    String comment,
+    int rating,
+    bool showName,
+  ) async {
+    // Loading göster
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) =>
+          Center(child: CircularProgressIndicator(color: AppColors.primary)),
+    );
+
+    try {
+      final result = await _orderService.addComment(
+        productID: productID,
+        comment: comment,
+        commentRating: rating,
+        showName: showName,
+      );
+
+      // Loading kapat
+      Navigator.pop(context);
+
+      if (result.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Yorumunuz başarıyla kaydedildi'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        // Sayfayı yenile
+        _loadOrderDetail();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message ?? 'Yorum eklenirken hata oluştu'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      // Loading kapat
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Bir hata oluştu'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+}
+
+class _InfoItem {
+  final String label;
+  final String value;
+
+  _InfoItem(this.label, this.value);
 }

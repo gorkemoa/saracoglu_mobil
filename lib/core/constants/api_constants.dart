@@ -72,6 +72,7 @@ class ApiConstants {
 
   /// Comment Endpoints
   static const String getUserComments = 'service/user/account/comment/list';
+  static const String addComment = 'service/user/account/comment/add';
 
   /// Basket Endpoints
   static const String addToBasket = 'service/user/account/basket/add';

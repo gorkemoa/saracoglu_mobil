@@ -78,4 +78,66 @@ class OrderService {
       );
     }
   }
+
+  /// Ürün yorumu ekle
+  Future<CommentResponse> addComment({
+    required int productID,
+    required String comment,
+    required int commentRating,
+    required bool showName,
+  }) async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return CommentResponse(
+          isSuccess: false,
+          message: 'Oturum açmanız gerekiyor',
+        );
+      }
+
+      _logger.d(
+        '📤 Add Comment Request: productID=$productID, rating=$commentRating',
+      );
+
+      final result = await _networkService.post(
+        ApiConstants.addComment,
+        body: {
+          'userToken': token,
+          'productID': productID,
+          'comment': comment,
+          'commentRating': commentRating,
+          'showName': showName,
+        },
+      );
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess) {
+        return CommentResponse(
+          isSuccess: true,
+          message: 'Yorumunuz başarıyla eklendi',
+        );
+      } else {
+        return CommentResponse(
+          isSuccess: false,
+          message: result.errorMessage ?? 'Yorum eklenirken bir hata oluştu',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ Yorum ekleme hatası', error: e);
+      return CommentResponse(
+        isSuccess: false,
+        message: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+}
+
+/// Yorum ekleme response modeli
+class CommentResponse {
+  final bool isSuccess;
+  final String? message;
+
+  CommentResponse({required this.isSuccess, this.message});
 }
