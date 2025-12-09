@@ -83,4 +83,9 @@ class ApiConstants {
   /// Order Endpoints
   static const String getUserOrders = 'service/user/account/order/list';
   static const String getOrderDetail = 'service/user/account/order/detail';
+
+  /// Contact Endpoints
+  static const String getContactSubjects = 'service/general/general/contact/subjects';
+  static const String sendContactMessage = 'service/user/account/contact/sendMessage';
+  static const String getUserContactForms = 'service/user/account/contact/list';
 }
