@@ -1,6 +1,5 @@
 import '../core/constants/api_constants.dart';
 import '../models/banner/banner_model.dart';
-import '../models/banner/banner_response.dart';
 import 'network_service.dart';
 
 class BannerService {
