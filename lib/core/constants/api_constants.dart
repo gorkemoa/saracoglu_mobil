@@ -94,4 +94,7 @@ class ApiConstants {
   /// FAQ Endpoints
   static const String getFAQCategories = 'service/general/general/faq/catList';
   static const String getFAQList = 'service/general/general/faq/list';
+
+  /// Banner Endpoints
+  static const String getBanners = 'service/general/general/banner/list';
 }

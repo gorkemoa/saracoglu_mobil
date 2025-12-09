@@ -7,8 +7,10 @@ import '../services/auth_service.dart';
 import '../services/product_service.dart';
 import '../services/favorite_service.dart';
 import '../services/basket_service.dart';
+import '../services/banner_service.dart';
 import '../models/product/product_model.dart';
 import '../models/product/category_model.dart';
+import '../models/banner/banner_model.dart';
 import 'product_detail_page.dart';
 import 'all_products_page.dart';
 
@@ -30,6 +32,7 @@ class HomeContentState extends State<HomeContent> {
   final ProductService _productService = ProductService();
   final FavoriteService _favoriteService = FavoriteService();
   final BasketService _basketService = BasketService();
+  final BannerService _bannerService = BannerService();
 
   // Yeni ürünler state
   List<ProductModel> _newProducts = [];
@@ -43,12 +46,9 @@ class HomeContentState extends State<HomeContent> {
   List<CategoryModel> _categories = [];
   bool _isLoadingCategories = true;
 
-  final List<Map<String, dynamic>> _banners = [
-    {'image': 'assets/slider/1.png'},
-    {'image': 'assets/slider/2.png'},
-    {'image': 'assets/slider/3.png'},
-    {'image': 'assets/slider/4.png'},
-  ];
+  // Bannerlar state
+  List<BannerModel> _banners = [];
+  bool _isLoadingBanners = true;
 
   @override
   void initState() {
@@ -65,10 +65,22 @@ class HomeContentState extends State<HomeContent> {
   /// Ürünleri yükle
   Future<void> _loadProducts() async {
     await Future.wait([
+      _loadBanners(),
       _loadCategories(),
       _loadNewProducts(),
       _loadCampaignProducts(),
     ]);
+  }
+
+  /// Banner'ları yükle
+  Future<void> _loadBanners() async {
+    final banners = await _bannerService.getBanners();
+    if (mounted) {
+      setState(() {
+        _isLoadingBanners = false;
+        _banners = banners;
+      });
+    }
   }
 
   /// Kategorileri yükle
@@ -555,6 +567,22 @@ class HomeContentState extends State<HomeContent> {
   }
 
   Widget _buildPromoSlider() {
+    if (_isLoadingBanners) {
+      return SizedBox(
+        height: 200,
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+            strokeWidth: 2,
+          ),
+        ),
+      );
+    }
+
+    if (_banners.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       children: [
         Container(
@@ -580,7 +608,7 @@ class HomeContentState extends State<HomeContent> {
     );
   }
 
-  Widget _buildSliderItem(Map<String, dynamic> banner) {
+  Widget _buildSliderItem(BannerModel banner) {
     return GestureDetector(
       onTap: () {
         // Banner tıklama işlemi
@@ -593,8 +621,8 @@ class HomeContentState extends State<HomeContent> {
         ),
         child: ClipRRect(
           borderRadius: AppRadius.borderRadiusLG,
-          child: Image.asset(
-            banner['image'] as String,
+          child: Image.network(
+            banner.postMainImage,
             fit: BoxFit.cover,
             width: double.infinity,
             height: double.infinity,
@@ -611,6 +639,25 @@ class HomeContentState extends State<HomeContent> {
                 ),
               ),
             ),
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: AppRadius.borderRadiusLG,
+                ),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.primary,
+                    strokeWidth: 2,
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                        : null,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
