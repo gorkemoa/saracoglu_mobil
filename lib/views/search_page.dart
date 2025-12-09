@@ -65,10 +65,6 @@ class SearchPageState extends State<SearchPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _searchController.addListener(_onSearchTextChanged);
-    // Sayfa açıldığında arama kutusuna otomatik focus
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _searchFocusNode.requestFocus();
-    });
     _loadSpecialProducts();
   }
 

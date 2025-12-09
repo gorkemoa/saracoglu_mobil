@@ -287,66 +287,16 @@ class HomeContentState extends State<HomeContent> {
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      color: AppColors.surface,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Image.asset('assets/logo.png', height: 35, fit: BoxFit.contain),
-          Row(
-            children: [
-              _buildHeaderIcon(Icons.favorite_border, badge: false),
-              SizedBox(width: AppSpacing.md),
-              _buildHeaderIcon(
-                Icons.shopping_cart_outlined,
-                badge: true,
-                badgeCount: "0",
-              ),
-            ],
-          ),
+          Image.asset('assets/logo.png', height: 40, fit: BoxFit.contain),
+      
         ],
       ),
     );
   }
 
-  Widget _buildHeaderIcon(
-    IconData icon, {
-    bool badge = false,
-    String? badgeCount,
-  }) {
-    return Stack(
-      children: [
-        Container(
-          padding: EdgeInsets.all(AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: AppColors.primary, size: AppSizes.iconMD),
-        ),
-        if (badge)
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Container(
-              padding: EdgeInsets.all(AppSpacing.xs),
-              decoration: const BoxDecoration(
-                color: AppColors.badge,
-                shape: BoxShape.circle,
-              ),
-              constraints: BoxConstraints(
-                minWidth: AppSizes.badgeSize,
-                minHeight: AppSizes.badgeSize,
-              ),
-              child: Text(
-                badgeCount ?? "",
-                style: AppTypography.badge,
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
 
   Widget _buildSearchBar() {
     return GestureDetector(

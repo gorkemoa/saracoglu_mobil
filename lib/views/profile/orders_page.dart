@@ -14,16 +14,29 @@ class OrdersPage extends StatefulWidget {
 
 class _OrdersPageState extends State<OrdersPage> {
   final OrderService _orderService = OrderService();
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isLoading = true;
   String? _errorMessage;
   UserOrdersResponse? _ordersResponse;
   int? _selectedStatusFilter;
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadOrders() async {
@@ -45,12 +58,31 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   List<UserOrder> get _allOrders => _ordersResponse?.orders ?? [];
-  
+
   List<UserOrder> get _filteredOrders {
-    if (_selectedStatusFilter == null) {
-      return _allOrders;
+    var orders = _allOrders;
+
+    // Durum filtreleme
+    if (_selectedStatusFilter != null) {
+      orders = orders
+          .where((order) => order.orderStatusID == _selectedStatusFilter)
+          .toList();
     }
-    return _allOrders.where((order) => order.orderStatusID == _selectedStatusFilter).toList();
+
+    // Arama filtreleme
+    if (_searchQuery.isNotEmpty) {
+      orders = orders.where((order) {
+        final orderCodeMatch =
+            order.orderCode.toLowerCase().contains(_searchQuery);
+        final productMatch = order.products.any(
+            (product) => product.productName.toLowerCase().contains(_searchQuery));
+        final statusMatch =
+            order.orderStatusTitle.toLowerCase().contains(_searchQuery);
+        return orderCodeMatch || productMatch || statusMatch;
+      }).toList();
+    }
+
+    return orders;
   }
 
   Color _getStatusColor(int statusID) {
@@ -99,15 +131,20 @@ class _OrdersPageState extends State<OrdersPage> {
         ),
         centerTitle: true,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(52),
-          child: _buildStatusLegend(),
+          preferredSize: Size.fromHeight(112),
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              _buildStatusLegend(),
+            ],
+          ),
         ),
       ),
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
-          ? _buildErrorState()
-          : _buildOrderList(_filteredOrders),
+              ? _buildErrorState()
+              : _buildOrderList(_filteredOrders),
     );
   }
 
@@ -446,13 +483,65 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.md, 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Sipariş kodu veya ürün ara...',
+          hintStyle: TextStyle(
+            fontSize: 14,
+            color: AppColors.textTertiary,
+          ),
+          prefixIcon: Icon(
+            Icons.search,
+            color: AppColors.textTertiary,
+            size: 20,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.clear,
+                    color: AppColors.textTertiary,
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          filled: true,
+          fillColor: AppColors.background,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.border, width: 1),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.border, width: 1),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+          ),
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+        style: TextStyle(
+          fontSize: 14,
+          color: AppColors.textPrimary,
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatusLegend() {
     if (_ordersResponse == null) {
       return SizedBox.shrink();
     }
 
     final statusTitles = _ordersResponse!.statusTitles;
-    
+
     return Container(
       height: 52,
       padding: EdgeInsets.symmetric(vertical: 8),
@@ -463,10 +552,12 @@ class _OrdersPageState extends State<OrdersPage> {
         separatorBuilder: (_, __) => SizedBox(width: 8),
         itemBuilder: (context, index) {
           final isAllFilter = index == 0;
-          final statusId = isAllFilter ? null : statusTitles[index - 1].statusID;
-          final statusName = isAllFilter ? 'Tümü' : statusTitles[index - 1].statusName;
+          final statusId =
+              isAllFilter ? null : statusTitles[index - 1].statusID;
+          final statusName =
+              isAllFilter ? 'Tümü' : statusTitles[index - 1].statusName;
           final isSelected = _selectedStatusFilter == statusId;
-          
+
           return GestureDetector(
             onTap: () {
               HapticFeedback.lightImpact();
