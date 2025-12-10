@@ -10,6 +10,7 @@ import '../services/basket_service.dart';
 import '../services/address_service.dart';
 import '../services/coupon_service.dart';
 import 'auth/login_page.dart';
+import 'payment_page.dart';
 
 class CartPage extends StatefulWidget {
   const CartPage({super.key});
@@ -2406,15 +2407,12 @@ class CartPageState extends State<CartPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           _buildSummaryRow('Sepet Toplamı', _basketData?.cartTotal ?? ''),
+          _buildSummaryRow('Sepet Toplamı', _basketData?.cartTotal ?? ''),
           SizedBox(height: AppSpacing.xs),
           _buildSummaryRow('Ara Toplam', _basketData?.subtotal ?? ''),
           SizedBox(height: AppSpacing.xs),
           if (_basketData != null) ...[
-            _buildSummaryRow(
-              'KDV Topamı ',
-              _basketData!.vatAmount,
-            ),
+            _buildSummaryRow('KDV Topamı ', _basketData!.vatAmount),
             SizedBox(height: AppSpacing.xs),
           ],
           _buildSummaryRow(
@@ -2525,18 +2523,51 @@ class CartPageState extends State<CartPage> {
               child: ElevatedButton(
                 onPressed: () {
                   HapticFeedback.mediumImpact();
+                  // Adres kontrolü
+                  if (_selectedAddress == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: AppSpacing.sm),
+                            Text('Lütfen bir teslimat adresi seçin'),
+                          ],
+                        ),
+                        backgroundColor: AppColors.warning,
+                        behavior: SnackBarBehavior.floating,
+                        margin: EdgeInsets.all(AppSpacing.md),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.borderRadiusSM,
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  // Toplam tutarı hesapla
+                  final totalPrice = _parsePrice(
+                    _basketData?.grandTotal ?? '0',
+                  );
                   // Ödeme sayfasına git
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Ödeme sayfasına yönlendiriliyorsunuz...'),
-                      backgroundColor: AppColors.primary,
-                      behavior: SnackBarBehavior.floating,
-                      margin: EdgeInsets.all(AppSpacing.md),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.borderRadiusSM,
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PaymentPage(
+                        shipAddress: _selectedAddress,
+                        billAddress:
+                            _selectedAddress, // Fatura adresi olarak teslimat adresini kullan
+                        basketData: _basketData,
+                        totalPrice: totalPrice,
                       ),
                     ),
-                  );
+                  ).then((_) {
+                    // Ödeme sonrası sepeti yenile
+                    _loadBasket();
+                  });
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

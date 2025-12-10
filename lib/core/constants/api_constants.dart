@@ -97,4 +97,14 @@ class ApiConstants {
 
   /// Banner Endpoints
   static const String getBanners = 'service/general/general/banner/list';
+
+  /// Payment Endpoints
+  /// PayTR ile ödeme isteği - NOT: API geliştirme aşamasında, ileride güncellenecek
+  static const String paytrPayment = 'service/payment/payment/request/paytr';
+  /// Taksit sorgulama - Kartın ilk 8 hanesi ile
+  static const String getInstallments = 'service/payment/payment/installments';
+
+  /// Contracts Endpoints
+  /// Mesafeli Satış Sözleşmesi - kullanımı: '${ApiConstants.getSalesAgreement}?userToken=xxx&shipAddressID=1&billAddressID=1'
+  static const String getSalesAgreement = 'service/general/general/contracts/salesAgreement';
 }

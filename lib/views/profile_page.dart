@@ -319,14 +319,7 @@ class ProfilePageState extends State<ProfilePage> {
           style: AppTypography.h4.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            onPressed: () {
-              // Ayarlar
-            },
-            icon: Icon(Icons.settings_outlined, color: AppColors.textPrimary),
-          ),
-        ],
+       
       ),
       body: SingleChildScrollView(
         child: Column(
