@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
+
+import '../../services/contract_service.dart';
+import '../profile/contract_viewer_page.dart';
 import 'code_verification_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -22,6 +25,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isAgreementAccepted = false;
 
   @override
   void dispose() {
@@ -48,9 +52,7 @@ class _RegisterPageState extends State<RegisterPage> {
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
         ),
       );
       return;
@@ -64,9 +66,21 @@ class _RegisterPageState extends State<RegisterPage> {
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
+        ),
+      );
+      return;
+    }
+
+    // Sözleşme onayı kontrolü
+    if (!_isAgreementAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Lütfen üyelik sözleşmesini onaylayın'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(AppSpacing.md),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
         ),
       );
       return;
@@ -89,14 +103,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
     if (success && mounted) {
       HapticFeedback.heavyImpact();
-      
+
       // Kod doğrulama sayfasına git
       final verified = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (context) => CodeVerificationPage(
-            email: _emailController.text.trim(),
-          ),
+          builder: (context) =>
+              CodeVerificationPage(email: _emailController.text.trim()),
         ),
       );
 
@@ -111,9 +124,7 @@ class _RegisterPageState extends State<RegisterPage> {
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(AppSpacing.md),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.borderRadiusSM,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
         ),
       );
     }
@@ -225,7 +236,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _passwordController,
                   hintText: '••••••••',
                   obscureText: _obscurePassword,
-                  onToggle: () => setState(() => _obscurePassword = !_obscurePassword),
+                  onToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                   textInputAction: TextInputAction.next,
                 ),
 
@@ -238,9 +250,73 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _confirmPasswordController,
                   hintText: '••••••••',
                   obscureText: _obscureConfirmPassword,
-                  onToggle: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                  onToggle: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                  ),
                   textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _register(),
+                  onSubmitted: (_) {},
+                ),
+
+                SizedBox(height: AppSpacing.lg),
+
+                // Sözleşme Onayı
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: _isAgreementAccepted,
+                        activeColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            _isAgreementAccepted = value ?? false;
+                          });
+                        },
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ContractViewerPage(
+                                title: 'Üyelik Sözleşmesi',
+                                loadContract: () =>
+                                    ContractService().getMembershipAgreement(),
+                              ),
+                            ),
+                          );
+                        },
+                        child: RichText(
+                          text: TextSpan(
+                            text: 'Üyelik sözleşmesini',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.primary,
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: ' okudum ve onaylıyorum.',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                  decoration: TextDecoration.none,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
 
                 SizedBox(height: AppSpacing.xxl),
@@ -258,7 +334,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.borderRadiusMD,
                       ),
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
+                      disabledBackgroundColor: AppColors.primary.withOpacity(
+                        0.6,
+                      ),
                     ),
                     child: _isLoading
                         ? SizedBox(
@@ -266,7 +344,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             width: 24,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : Text(
@@ -403,7 +483,9 @@ class _RegisterPageState extends State<RegisterPage> {
         suffixIcon: IconButton(
           onPressed: onToggle,
           icon: Icon(
-            obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            obscureText
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
             color: AppColors.textSecondary,
             size: 22,
           ),

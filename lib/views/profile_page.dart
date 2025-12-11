@@ -13,7 +13,8 @@ import 'profile/coupons_page.dart';
 import 'profile/saved_cards_page.dart';
 import 'profile/change_password_page.dart';
 import 'profile/help_support_page.dart';
-import 'profile/legal_info_page.dart';
+import 'profile/privacy_policy_page.dart';
+import 'profile/kvkk_policy_page.dart';
 import 'profile/about_page.dart';
 import 'profile/my_reviews_page.dart';
 
@@ -319,7 +320,6 @@ class ProfilePageState extends State<ProfilePage> {
           style: AppTypography.h4.copyWith(color: AppColors.textPrimary),
         ),
         centerTitle: true,
-       
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -432,12 +432,23 @@ class ProfilePageState extends State<ProfilePage> {
                     MaterialPageRoute(builder: (_) => const HelpSupportPage()),
                   ),
                 ),
+
                 _MenuItem(
-                  icon: Icons.description_outlined,
-                  title: 'Yasal Bilgiler',
+                  icon: Icons.privacy_tip_outlined,
+                  title: 'Gizlilik Politikası',
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const LegalInfoPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const PrivacyPolicyPage(),
+                    ),
+                  ),
+                ),
+                _MenuItem(
+                  icon: Icons.security_outlined,
+                  title: 'KVKK Aydınlatma Metni',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const KVKKPolicyPage()),
                   ),
                 ),
                 _MenuItem(
