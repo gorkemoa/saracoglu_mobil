@@ -494,9 +494,300 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               ),
             ),
           ],
+
+          // İptal/İade Butonu
+          if ((product.productStatus == 1 || product.productStatus == 2) &&
+              !product.isCanceled) ...[
+            SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showCancelDialog(product),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.error,
+                  side: BorderSide(color: AppColors.error),
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                ),
+                icon: Icon(Icons.cancel_outlined, size: 18),
+                label: Text('Ürünü İptal/İade Et'),
+              ),
+            ),
+          ],
         ],
       ),
     );
+  }
+
+  Future<void> _showCancelDialog(OrderDetailProduct product) async {
+    final TextEditingController reasonController = TextEditingController();
+    int selectedQuantity = 1;
+    // Varsayılan iptal tipi: Vazgeçtim (4)
+    int selectedReasonId = 4;
+
+    // Basit iptal sebepleri
+    final reasons = [
+      {'id': 4, 'label': 'Vazgeçtim'},
+      {'id': 1, 'label': 'Yanlış Ürün'},
+      {'id': 2, 'label': 'Hasarlı Ürün'},
+      {'id': 3, 'label': 'Diğer'},
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.lg),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                SizedBox(height: AppSpacing.lg),
+                Text('Ürün İptal/İade Talebi', style: AppTypography.h4),
+                SizedBox(height: AppSpacing.md),
+
+                // Ürün Bilgisi
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: AppRadius.borderRadiusSM,
+                      child: Image.network(
+                        product.productImage,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 48,
+                          height: 48,
+                          color: AppColors.background,
+                          child: Icon(Icons.image_outlined, size: 20),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.productName,
+                            style: AppTypography.labelMedium,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            '${product.productQuantity} Adet',
+                            style: AppTypography.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AppSpacing.lg),
+
+                // Adet Seçimi (Birden fazla ise)
+                if (int.tryParse(product.productQuantity.toString()) != null &&
+                    int.parse(product.productQuantity.toString()) > 1) ...[
+                  Text('İade Edilecek Adet', style: AppTypography.labelMedium),
+                  SizedBox(height: AppSpacing.sm),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: selectedQuantity > 1
+                            ? () => setModalState(() => selectedQuantity--)
+                            : null,
+                        icon: Icon(Icons.remove_circle_outline),
+                      ),
+                      Text(
+                        selectedQuantity.toString(),
+                        style: AppTypography.h4,
+                      ),
+                      IconButton(
+                        onPressed:
+                            selectedQuantity <
+                                int.parse(product.productQuantity.toString())
+                            ? () => setModalState(() => selectedQuantity++)
+                            : null,
+                        icon: Icon(Icons.add_circle_outline),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: AppSpacing.md),
+                ],
+
+                // Sebep Seçimi
+                Text('İptal Nedeni', style: AppTypography.labelMedium),
+                SizedBox(height: AppSpacing.sm),
+                DropdownButtonFormField<int>(
+                  value: selectedReasonId,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusSM,
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 0,
+                    ),
+                  ),
+                  items: reasons
+                      .map(
+                        (r) => DropdownMenuItem<int>(
+                          value: r['id'] as int,
+                          child: Text(r['label'] as String),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null)
+                      setModalState(() => selectedReasonId = val);
+                  },
+                ),
+                SizedBox(height: AppSpacing.md),
+
+                // Açıklama
+                Text('Açıklama', style: AppTypography.labelMedium),
+                SizedBox(height: AppSpacing.sm),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    hintText: 'İptal nedeninizi detaylandırın...',
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.borderRadiusSM,
+                    ),
+                  ),
+                ),
+                SizedBox(height: AppSpacing.xl),
+
+                // Butonlar
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text('Vazgeç'),
+                      ),
+                    ),
+                    SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _cancelOrder(
+                            productID: product.productID,
+                            quantity: selectedQuantity,
+                            reasonId: selectedReasonId,
+                            description: reasonController.text,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text('Talebi Gönder'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _cancelOrder({
+    required int productID,
+    required int quantity,
+    required int reasonId,
+    required String description,
+  }) async {
+    // Açıklama kontrolü
+    if (description.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lütfen bir iptal nedeni giriniz'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    // Loading göster
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) =>
+          Center(child: CircularProgressIndicator(color: AppColors.error)),
+    );
+
+    final response = await _orderService.cancelOrder(
+      orderID: widget.orderID,
+      products: [
+        {
+          "productID": productID,
+          "productQuantity": quantity,
+          "cancelType": reasonId,
+          "cancelDesc": description,
+        },
+      ],
+    );
+
+    // Dialog kapa
+    if (mounted) Navigator.pop(context);
+
+    if (mounted) {
+      if (response.success) {
+        // Başarılı
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message ?? 'İptal talebiniz alındı'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        // Sayfayı yenile
+        _loadOrderDetail();
+      } else {
+        // Hata
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message ?? 'İşlem başarısız'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Color _getProductStatusColor(int status) {
@@ -721,6 +1012,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               ],
             ),
           ],
+
           SizedBox(height: AppSpacing.md),
           Divider(height: 1),
           SizedBox(height: AppSpacing.md),
@@ -787,22 +1079,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       ),
       child: Column(
         children: [
-          if (order.isCancelVisible)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  _showCancelDialog();
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.error,
-                  side: BorderSide(color: AppColors.error),
-                  padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
-                ),
-                child: Text('Siparişi İptal Et'),
-              ),
-            ),
           if (order.salesAgreement.isNotEmpty) ...[
             SizedBox(height: AppSpacing.sm),
             TextButton(
@@ -815,30 +1091,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               ),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  void _showCancelDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Siparişi İptal Et'),
-        content: Text('Bu siparişi iptal etmek istediğinize emin misiniz?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Vazgeç'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              // TODO: İptal işlemi
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: Text('İptal Et'),
-          ),
         ],
       ),
     );

@@ -1,6 +1,7 @@
 import '../core/constants/api_constants.dart';
 import '../models/order/user_order_model.dart';
 import '../models/order/order_detail_model.dart';
+import '../models/order/order_cancel_model.dart';
 import 'network_service.dart';
 import 'auth_service.dart';
 import 'package:logger/logger.dart';
@@ -129,6 +130,44 @@ class OrderService {
       return CommentResponse(
         isSuccess: false,
         message: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Sipariş iptal/iade et
+  Future<OrderCancelResponse> cancelOrder({
+    required int orderID,
+    required List<Map<String, dynamic>> products,
+  }) async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return OrderCancelResponse.errorResponse('Oturum açmanız gerekiyor');
+      }
+
+      _logger.d(
+        '📤 Cancel Order Request: orderID=$orderID, products=$products',
+      );
+
+      final result = await _networkService.post(
+        ApiConstants.cancelOrder,
+        body: {'userToken': token, 'orderID': orderID, 'products': products},
+      );
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        return OrderCancelResponse.fromJson(result.data!);
+      } else {
+        return OrderCancelResponse.errorResponse(
+          result.errorMessage ?? 'İptal işlemi başarısız oldu',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ Sipariş iptal hatası', error: e);
+      return OrderCancelResponse.errorResponse(
+        'Bir hata oluştu: ${e.toString()}',
       );
     }
   }
