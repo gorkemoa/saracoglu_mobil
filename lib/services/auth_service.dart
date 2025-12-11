@@ -151,6 +151,7 @@ class AuthService extends ChangeNotifier {
           // Credentials'ı kaydet (kalıcı oturum)
           await _saveCredentials(response.data!.userID, response.data!.token);
 
+
           notifyListeners();
         }
 
@@ -187,6 +188,8 @@ class AuthService extends ChangeNotifier {
 
   /// Çıkış yap
   Future<void> logout() async {
+  
+    
     await _clearStoredCredentials();
     _currentUser = null;
     _pendingCodeToken = null;

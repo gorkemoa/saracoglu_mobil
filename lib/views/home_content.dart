@@ -303,7 +303,31 @@ class HomeContentState extends State<HomeContent> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Image.asset('assets/logo.png', height: 40, fit: BoxFit.contain),
-      
+          GestureDetector(
+            onTap: () async {
+              if (!await AuthGuard.checkAuth(
+                context,
+                message: 'Bildirimleri görmek için giriş yapın',
+              )) {
+                return;
+              }
+              if (!mounted) return;
+              Navigator.pushNamed(context, '/notifications');
+            },
+            child: Container(
+              padding: EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: AppRadius.borderRadiusXS,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Icon(
+                Icons.notifications_outlined,
+                color: AppColors.textPrimary,
+                size: AppSizes.iconMD,
+              ),
+            ),
+          ),
         ],
       ),
     );

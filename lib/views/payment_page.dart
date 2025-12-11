@@ -463,7 +463,7 @@ class _PaymentPageState extends State<PaymentPage> {
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(AppSpacing.lg),
+          padding: EdgeInsets.all(AppSpacing.md),
           child: Form(
             key: _formKey,
             child: Column(
@@ -471,35 +471,35 @@ class _PaymentPageState extends State<PaymentPage> {
               children: [
                 // Sipariş Özeti
                 _buildOrderSummary(),
-                SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.sm),
 
                 // Teslimat Adresi
                 _buildShipAddressSection(),
-                SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.sm),
 
                 // Fatura Adresi
                 _buildBillAddressSection(),
-                SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.sm),
 
                 // Kart Bilgileri
                 _buildCardSection(),
-                SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.sm),
 
                 // Taksit Seçenekleri
                 _buildInstallmentSection(),
-                SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.sm),
 
                 // 3D Secure ve Kart Kaydetme
                 _buildSecurityOptions(),
-                SizedBox(height: AppSpacing.md),
+                SizedBox(height: AppSpacing.sm),
 
                 // Sözleşme Onayı
                 _buildAgreementSection(),
-                SizedBox(height: AppSpacing.xl),
+                SizedBox(height: AppSpacing.lg),
 
                 // Ödeme Butonu
                 _buildPaymentButton(),
-                SizedBox(height: AppSpacing.xl),
+                SizedBox(height: AppSpacing.md),
               ],
             ),
           ),
@@ -531,10 +531,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildOrderSummary() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
@@ -542,14 +542,14 @@ class _PaymentPageState extends State<PaymentPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.receipt_outlined, color: AppColors.primary, size: 20),
-              SizedBox(width: AppSpacing.sm),
-              Text('Sipariş Özeti', style: AppTypography.h5),
+              Icon(Icons.receipt_outlined, color: AppColors.primary, size: 18),
+              SizedBox(width: AppSpacing.xs),
+              Text('Sipariş Özeti', style: AppTypography.labelLarge),
             ],
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           Divider(color: AppColors.divider, height: 1),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           if (widget.basketData != null) ...[
             _buildSummaryRow('Ara Toplam', widget.basketData!.subtotal),
@@ -573,15 +573,15 @@ class _PaymentPageState extends State<PaymentPage> {
                 valueColor: AppColors.success,
               ),
             ],
-            SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.sm),
             Divider(color: AppColors.divider, height: 1),
-            SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.sm),
           ],
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Toplam', style: AppTypography.h5),
+              Text('Toplam', style: AppTypography.labelLarge),
               Text(
                 '₺${widget.totalPrice.toStringAsFixed(2)}',
                 style: AppTypography.priceLarge.copyWith(fontSize: 20),
@@ -616,10 +616,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildShipAddressSection() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
@@ -628,7 +628,7 @@ class _PaymentPageState extends State<PaymentPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(AppSpacing.xs),
+                padding: EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withOpacity(0.1),
                   borderRadius: AppRadius.borderRadiusXS,
@@ -636,17 +636,17 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: Icon(
                   Icons.local_shipping_outlined,
                   color: AppColors.primary,
-                  size: 18,
+                  size: 16,
                 ),
               ),
-              SizedBox(width: AppSpacing.sm),
-              Text('Teslimat Adresi', style: AppTypography.h5),
+              SizedBox(width: AppSpacing.xs),
+              Text('Teslimat Adresi', style: AppTypography.labelLarge),
             ],
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           if (widget.shipAddress != null)
             Container(
-              padding: EdgeInsets.all(AppSpacing.md),
+              padding: EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: AppColors.background,
                 borderRadius: AppRadius.borderRadiusSM,
@@ -722,7 +722,7 @@ class _PaymentPageState extends State<PaymentPage> {
             )
           else
             Container(
-              padding: EdgeInsets.all(AppSpacing.md),
+              padding: EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: AppColors.error.withOpacity(0.05),
                 borderRadius: AppRadius.borderRadiusSM,
@@ -754,10 +754,10 @@ class _PaymentPageState extends State<PaymentPage> {
     final billAddress = _effectiveBillAddress;
 
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
@@ -766,7 +766,7 @@ class _PaymentPageState extends State<PaymentPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(AppSpacing.xs),
+                padding: EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: AppColors.info.withOpacity(0.1),
                   borderRadius: AppRadius.borderRadiusXS,
@@ -774,14 +774,14 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: Icon(
                   Icons.receipt_long_outlined,
                   color: AppColors.info,
-                  size: 18,
+                  size: 16,
                 ),
               ),
-              SizedBox(width: AppSpacing.sm),
-              Text('Fatura Adresi', style: AppTypography.h5),
+              SizedBox(width: AppSpacing.xs),
+              Text('Fatura Adresi', style: AppTypography.labelLarge),
             ],
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           // Teslimat adresiyle aynı checkbox
           InkWell(
@@ -850,10 +850,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
           // Farklı adres seçimi
           if (!_billAddressSameAsShip) ...[
-            SizedBox(height: AppSpacing.md),
+            SizedBox(height: AppSpacing.sm),
             if (billAddress != null)
               Container(
-                padding: EdgeInsets.all(AppSpacing.md),
+                padding: EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
                   color: AppColors.background,
                   borderRadius: AppRadius.borderRadiusSM,
@@ -899,7 +899,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 onTap: _showBillAddressSelector,
                 borderRadius: AppRadius.borderRadiusSM,
                 child: Container(
-                  padding: EdgeInsets.all(AppSpacing.md),
+                  padding: EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
                     color: AppColors.background,
                     borderRadius: AppRadius.borderRadiusSM,
@@ -936,10 +936,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildCardSection() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
@@ -947,14 +947,14 @@ class _PaymentPageState extends State<PaymentPage> {
         children: [
           Row(
             children: [
-              Icon(Icons.credit_card, color: AppColors.primary, size: 20),
-              SizedBox(width: AppSpacing.sm),
-              Text('Kart Bilgileri', style: AppTypography.h5),
+              Icon(Icons.credit_card, color: AppColors.primary, size: 18),
+              SizedBox(width: AppSpacing.xs),
+              Text('Kart Bilgileri', style: AppTypography.labelLarge),
               Spacer(),
               _buildCardTypeIcon(),
             ],
           ),
-          SizedBox(height: AppSpacing.lg),
+          SizedBox(height: AppSpacing.sm),
 
           // Kart Üzerindeki İsim
           _buildTextField(
@@ -970,7 +970,7 @@ class _PaymentPageState extends State<PaymentPage> {
               return null;
             },
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           // Kart Numarası
           _buildTextField(
@@ -999,7 +999,7 @@ class _PaymentPageState extends State<PaymentPage> {
               return null;
             },
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           // Son Kullanma Tarihi ve CVV
           Row(
@@ -1240,24 +1240,24 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildInstallmentSection() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Row(
             children: [
               Icon(
                 Icons.calendar_month_outlined,
                 color: AppColors.primary,
-                size: 20,
+                size: 18,
               ),
-              SizedBox(width: AppSpacing.sm),
-              Text('Taksit Seçenekleri', style: AppTypography.h5),
+              SizedBox(width: AppSpacing.xs),
+              Text('Taksit Seçenekleri', style: AppTypography.labelLarge),
               Spacer(),
               // Kart bilgisi
               if (_cardDetail != null) ...[
@@ -1292,7 +1292,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ],
             ],
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           // Yükleniyor
           if (_isLoadingInstallments) ...[
@@ -1467,7 +1467,6 @@ class _PaymentPageState extends State<PaymentPage> {
                                 : AppColors.textSecondary,
                           ),
                         ),
-                       
                       ],
                     ),
                   ),
@@ -1511,10 +1510,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildSecurityOptions() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
@@ -1542,31 +1541,32 @@ class _PaymentPageState extends State<PaymentPage> {
                     children: [
                       Text(
                         '3D Secure ile Öde',
-                        style: AppTypography.labelLarge,
+                        style: AppTypography.labelMedium,
                       ),
                       Text(
                         'Daha güvenli ödeme için SMS onayı',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: AppTypography.labelSmall,
                       ),
                     ],
                   ),
                 ),
-                Switch(
-                  value: _payWith3D,
-                  onChanged: (value) {
-                    HapticFeedback.lightImpact();
-                    setState(() => _payWith3D = value);
-                  },
-                  activeColor: AppColors.primary,
+                Transform.scale(
+                  scale: 0.7, // 0.6 - 0.8 arası ideal
+                  child: Switch(
+                    value: _payWith3D,
+                    onChanged: (value) {
+                      HapticFeedback.lightImpact();
+                      setState(() => _payWith3D = value);
+                    },
+                    activeColor: AppColors.primary,
+                  ),
                 ),
               ],
             ),
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
           Divider(color: AppColors.divider, height: 1),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           // Kartı Kaydet
           InkWell(
@@ -1593,23 +1593,24 @@ class _PaymentPageState extends State<PaymentPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Kartımı Kaydet', style: AppTypography.labelLarge),
+                      Text('Kartımı Kaydet', style: AppTypography.labelMedium),
                       Text(
                         'Sonraki alışverişlerinizde hızlı ödeme',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
+                        style: AppTypography.labelSmall,
                       ),
                     ],
                   ),
                 ),
-                Switch(
-                  value: _saveCard,
-                  onChanged: (value) {
-                    HapticFeedback.lightImpact();
-                    setState(() => _saveCard = value);
-                  },
-                  activeColor: AppColors.primary,
+                Transform.scale(
+                  scale: 0.7, // 0.5 - 0.9 arası denerken idealini bul
+                  child: Switch(
+                    value: _saveCard,
+                    onChanged: (value) {
+                      HapticFeedback.lightImpact();
+                      setState(() => _saveCard = value);
+                    },
+                    activeColor: AppColors.primary,
+                  ),
                 ),
               ],
             ),
@@ -1621,10 +1622,10 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Widget _buildAgreementSection() {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: AppRadius.borderRadiusMD,
+        borderRadius: AppRadius.borderRadiusSM,
         boxShadow: AppShadows.shadowCard,
       ),
       child: Column(
@@ -1633,7 +1634,7 @@ class _PaymentPageState extends State<PaymentPage> {
           Row(
             children: [
               Container(
-                padding: EdgeInsets.all(AppSpacing.xs),
+                padding: EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: AppColors.warning.withOpacity(0.1),
                   borderRadius: AppRadius.borderRadiusXS,
@@ -1641,14 +1642,14 @@ class _PaymentPageState extends State<PaymentPage> {
                 child: Icon(
                   Icons.description_outlined,
                   color: AppColors.warning,
-                  size: 18,
+                  size: 16,
                 ),
               ),
               SizedBox(width: AppSpacing.sm),
-              Text('Sözleşme Onayı', style: AppTypography.h5),
+              Text('Sözleşme Onayı', style: AppTypography.labelLarge),
             ],
           ),
-          SizedBox(height: AppSpacing.md),
+          SizedBox(height: AppSpacing.sm),
 
           // Sözleşme Checkbox
           InkWell(
@@ -1662,7 +1663,7 @@ class _PaymentPageState extends State<PaymentPage> {
             },
             borderRadius: AppRadius.borderRadiusSM,
             child: Container(
-              padding: EdgeInsets.all(AppSpacing.md),
+              padding: EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: _agreementAccepted
                     ? AppColors.success.withOpacity(0.05)
@@ -1678,8 +1679,8 @@ class _PaymentPageState extends State<PaymentPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 22,
-                    height: 22,
+                    width: 15,
+                    height: 15,
                     decoration: BoxDecoration(
                       color: _agreementAccepted
                           ? AppColors.success
@@ -1693,7 +1694,7 @@ class _PaymentPageState extends State<PaymentPage> {
                       ),
                     ),
                     child: _agreementAccepted
-                        ? Icon(Icons.check, color: Colors.white, size: 16)
+                        ? Icon(Icons.check, color: Colors.white, size: 10)
                         : null,
                   ),
                   SizedBox(width: AppSpacing.sm),
@@ -1720,7 +1721,6 @@ class _PaymentPageState extends State<PaymentPage> {
                           ),
                         ),
                         SizedBox(height: AppSpacing.xxs),
-                       
                       ],
                     ),
                   ),
@@ -1740,6 +1740,20 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildPaymentButton() {
+    // Liste boşsa veya henüz yüklenmediyse fallback değer üret
+    final options = _installmentOptions;
+
+    // Eğer liste tamamen boşsa totalPayment = 0.00 göster
+    final selectedOption = options.isNotEmpty
+        ? options.firstWhere(
+            (e) => e.count == _selectedInstallment,
+            orElse: () => options.first,
+          )
+        : null;
+
+    final totalPayment =
+        selectedOption?.totalPayment.toStringAsFixed(2) ?? "0.00";
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -1747,7 +1761,7 @@ class _PaymentPageState extends State<PaymentPage> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
           disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
-          padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+          padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
           shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
           elevation: 2,
         ),
@@ -1767,8 +1781,9 @@ class _PaymentPageState extends State<PaymentPage> {
                   SizedBox(width: AppSpacing.sm),
                   Text('Güvenli Ödeme Yap', style: AppTypography.buttonLarge),
                   SizedBox(width: AppSpacing.sm),
+                  if (totalPayment != "0.00" )
                   Text(
-                      '₺${_installmentOptions.firstWhere((e) => e.count == _selectedInstallment).totalPayment.toStringAsFixed(2)}',
+                    '₺$totalPayment',
                     style: AppTypography.buttonLarge.copyWith(
                       fontWeight: FontWeight.w400,
                     ),
@@ -1851,8 +1866,6 @@ class _SalesAgreementSheetState extends State<_SalesAgreementSheet> {
     _scrollController.dispose();
     super.dispose();
   }
-
-  
 
   Future<void> _loadAgreement() async {
     final response = await widget.paymentService.getSalesAgreement(
@@ -2004,7 +2017,7 @@ class _SalesAgreementSheetState extends State<_SalesAgreementSheet> {
             child: SafeArea(
               child: Column(
                 children: [
-                  if ( _agreementData != null) ...[
+                  if (_agreementData != null) ...[
                     Container(
                       padding: EdgeInsets.all(AppSpacing.sm),
                       margin: EdgeInsets.only(bottom: AppSpacing.md),
@@ -2060,8 +2073,7 @@ class _SalesAgreementSheetState extends State<_SalesAgreementSheet> {
                           Text(
                             'Okudum ve Kabul Ediyorum',
                             style: AppTypography.buttonLarge.copyWith(
-                              color:
-                                  (_agreementData != null)
+                              color: (_agreementData != null)
                                   ? Colors.white
                                   : AppColors.textTertiary,
                             ),

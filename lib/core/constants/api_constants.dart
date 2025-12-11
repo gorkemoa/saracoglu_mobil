@@ -36,6 +36,8 @@ class ApiConstants {
   static const String updatePassword = 'service/user/update/password';
   /// deleteUser endpoint
   static const String deleteUser = 'service/user/account/delete';
+  /// getNotifications endpoint - kullanımı: '${ApiConstants.getNotifications}/$userId/notifications'
+  static const String getNotifications = 'service/user/account';
 
   /// Address Endpoints
   static const String addAddress = 'service/user/account/address/add';
