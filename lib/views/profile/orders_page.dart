@@ -72,12 +72,15 @@ class _OrdersPageState extends State<OrdersPage> {
     // Arama filtreleme
     if (_searchQuery.isNotEmpty) {
       orders = orders.where((order) {
-        final orderCodeMatch =
-            order.orderCode.toLowerCase().contains(_searchQuery);
+        final orderCodeMatch = order.orderCode.toLowerCase().contains(
+          _searchQuery,
+        );
         final productMatch = order.products.any(
-            (product) => product.productName.toLowerCase().contains(_searchQuery));
-        final statusMatch =
-            order.orderStatusTitle.toLowerCase().contains(_searchQuery);
+          (product) => product.productName.toLowerCase().contains(_searchQuery),
+        );
+        final statusMatch = order.orderStatusTitle.toLowerCase().contains(
+          _searchQuery,
+        );
         return orderCodeMatch || productMatch || statusMatch;
       }).toList();
     }
@@ -85,28 +88,20 @@ class _OrdersPageState extends State<OrdersPage> {
     return orders;
   }
 
-  Color _getStatusColor(int statusID) {
-    switch (statusID) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        return AppColors.info;
-      case 5:
-        return AppColors.success;
-      case 6:
-      case 7:
-      case 12:
-        return AppColors.error;
-      case 8:
-      case 9:
-      case 10:
-        return AppColors.warning;
-      case 11:
-        return AppColors.success;
-      default:
-        return AppColors.textTertiary;
+  Color _parseColor(String colorString) {
+    if (colorString.isEmpty) return AppColors.textTertiary;
+    try {
+      var hexColor = colorString.replaceAll("#", "");
+      if (hexColor.length == 6) {
+        hexColor = "FF$hexColor";
+      }
+      if (hexColor.length == 8) {
+        return Color(int.parse("0x$hexColor"));
+      }
+    } catch (e) {
+      // debugPrint('Color parse error: $e');
     }
+    return AppColors.textTertiary;
   }
 
   @override
@@ -116,35 +111,43 @@ class _OrdersPageState extends State<OrdersPage> {
       appBar: AppBar(
         backgroundColor: AppColors.surface,
         elevation: 0,
-        scrolledUnderElevation: 1,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: Icon(
             Icons.arrow_back_ios,
-            color: AppColors.textPrimary,
-            size: 20,
+            color: AppColors.textSecondary,
+            size: AppSizes.iconXS, // 16px - Reduced
           ),
         ),
         title: Text(
           'Siparişlerim',
-          style: AppTypography.h5.copyWith(color: AppColors.textPrimary),
+          style: AppTypography.h5.copyWith(
+            fontSize: 16,
+          ), // Kept 16 but using theme font
         ),
         centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(112),
-          child: Column(
-            children: [
-              _buildSearchBar(),
-              _buildStatusLegend(),
-            ],
-          ),
-        ),
       ),
-      body: _isLoading
-          ? _buildLoadingState()
-          : _errorMessage != null
-              ? _buildErrorState()
-              : _buildOrderList(_filteredOrders),
+      body: Column(
+        children: [
+          Container(
+            color: AppColors.surface,
+            child: Column(
+              children: [
+                _buildSearchBar(),
+                _buildStatusLegend(),
+                SizedBox(height: AppSpacing.sm),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? _buildLoadingState()
+                : _errorMessage != null
+                ? _buildErrorState()
+                : _buildOrderList(_filteredOrders),
+          ),
+        ],
+      ),
     );
   }
 
@@ -162,7 +165,11 @@ class _OrdersPageState extends State<OrdersPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, size: 48, color: AppColors.textTertiary),
+          Icon(
+            Icons.error_outline,
+            size: 40,
+            color: AppColors.textTertiary,
+          ), // Reduced from 48
           SizedBox(height: AppSpacing.md),
           Text(
             _errorMessage ?? 'Bir hata oluştu',
@@ -170,8 +177,12 @@ class _OrdersPageState extends State<OrdersPage> {
               color: AppColors.textSecondary,
             ),
           ),
-          SizedBox(height: AppSpacing.lg),
-          TextButton(onPressed: _loadOrders, child: Text('Tekrar Dene')),
+          SizedBox(height: AppSpacing.md),
+          TextButton(
+            onPressed: _loadOrders,
+            style: TextButton.styleFrom(textStyle: AppTypography.buttonMedium),
+            child: Text('Tekrar Dene'),
+          ),
         ],
       ),
     );
@@ -201,7 +212,7 @@ class _OrdersPageState extends State<OrdersPage> {
         children: [
           Icon(
             Icons.shopping_bag_outlined,
-            size: 64,
+            size: 48, // Reduced from 64
             color: AppColors.textTertiary,
           ),
           SizedBox(height: AppSpacing.md),
@@ -217,7 +228,12 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildOrderCard(UserOrder order) {
-    final statusColor = _getStatusColor(order.orderStatusID);
+    final statusColor = _parseColor(order.orderStatusColor);
+    final isCompleted = order.orderStatusID == 5; // Assuming 5 is Delivered
+    final deliveredCount = order.products.fold(
+      0,
+      (sum, product) => sum + product.productCurrentQuantity,
+    );
 
     return GestureDetector(
       onTap: () {
@@ -233,121 +249,235 @@ class _OrdersPageState extends State<OrdersPage> {
         );
       },
       child: Container(
+        margin: EdgeInsets.only(bottom: AppSpacing.sm),
         padding: EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border.withOpacity(0.5)),
+          borderRadius: AppRadius
+              .borderRadiusSM, // Smaller radius for "smaller" look or standard
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.shadowCard,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header - Sipariş No, Tarih ve Durum
+            // Header: Date and Total | Details Link
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.orderCode,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.orderDate,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        order.orderDate,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textTertiary,
-                        ),
+                    ),
+                    SizedBox(height: AppSpacing.xs),
+                    RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Toplam: ',
+                            style: AppTypography.bodySmall.copyWith(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          TextSpan(
+                            text: order.orderAmount,
+                            style: AppTypography.labelMedium.copyWith(
+                              color: AppColors
+                                  .primary, // Orange from theme (AppColors.warning)
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    order.orderStatusTitle,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: statusColor,
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OrderDetailPage(
+                          orderID: order.orderID,
+                          orderCode: order.orderCode,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: 6,
+                    ), // Görseldeki hafif aşağı hizalama
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.primary),
+                      ),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxs,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.max,
+                        crossAxisAlignment:
+                            CrossAxisAlignment.center, // Dikey ortalama
+                        children: [
+                          Text(
+                            'Detaylar',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.primary,
+                            ),
+                          ),
+
+                          Icon(
+                            Icons.chevron_right,
+                            size: AppSizes.iconXS,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
 
-            SizedBox(height: AppSpacing.sm),
-            Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
-            SizedBox(height: AppSpacing.sm),
-
-            // Ürünler - Yatay scroll veya stack
-            _buildProductsRow(order.products),
-
-            SizedBox(height: AppSpacing.sm),
-            Divider(height: 1, color: AppColors.border.withOpacity(0.5)),
-            SizedBox(height: AppSpacing.sm),
-
-            // Footer - Toplam ve Butonlar
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Divider(height: 1, color: AppColors.divider),
+            ),
+            // Status Line and Action Button
             Row(
               children: [
-                // Toplam
+                Icon(
+                  isCompleted ? Icons.check : Icons.local_shipping_outlined,
+                  color: statusColor,
+                  size: AppSizes.iconXS, // 16px
+                ),
+                SizedBox(width: AppSpacing.xs),
                 Expanded(
-                  child: Row(
-                    children: [
-                      Text(
-                        '${order.totalProduct} ürün',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        order.orderAmount,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    order.orderStatusTitle,
+                    style: AppTypography.labelMedium.copyWith(
+                      color: statusColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                // Butonlar
-                Row(
-                  children: [
-                    _buildSmallButton('Detay', true, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => OrderDetailPage(
-                            orderID: order.orderID,
-                            orderCode: order.orderCode,
+                if (isCompleted)
+                  _buildOutlinedButton(
+                    'Değerlendir',
+                    Icons.star_border,
+                    AppColors.primary,
+                    () {
+                      // Review action
+                    },
+                  ),
+              ],
+            ),
+
+            SizedBox(height: AppSpacing.sm),
+
+            // Product Images
+            SizedBox(
+              height: 48, // Reduced from 60
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: order.products.take(4).length,
+                separatorBuilder: (_, __) => SizedBox(width: AppSpacing.xs),
+                itemBuilder: (context, index) {
+                  final product = order.products[index];
+                  return Container(
+                    width: 36, // Reduced from 48
+                    height: 48, // Reduced from 60
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.border),
+                      borderRadius: AppRadius.borderRadiusXS,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(2),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: Image.network(
+                          product.productImage,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.image_not_supported,
+                            size: 12, // Reduced
+                            color: AppColors.textTertiary,
                           ),
                         ),
-                      );
-                    }),
-                    SizedBox(width: 8),
-                    _buildSmallButton(
-                      order.orderStatusID <= 4 ? 'Takip' : 'Tekrar Al',
-                      false,
-                      () {
-                        // TODO: Kargo takip veya tekrar sipariş
-                      },
+                      ),
                     ),
-                  ],
+                  );
+                },
+              ),
+            ),
+
+            SizedBox(height: AppSpacing.sm),
+
+            // Footer Info RIDVAN DÜZELTECEK LÜTFEN ŞİKAYET ETME BENİ
+            Text(
+              '${order.totalProduct} üründen, ${deliveredCount} ürün teslim edildi',
+              style: AppTypography.bodySmall.copyWith(
+                fontSize: 10,
+                color: AppColors.textTertiary,
+              ),
+            ),
+            if (isCompleted == false && order.products.length > deliveredCount)
+              Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Text(
+                  '${order.totalProduct} üründen ${order.totalCanceledProduct} ürün iade edildi/iptal edildi',
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: 10,
+                    color: AppColors.textTertiary,
+                  ),
                 ),
-              ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutlinedButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: 4,
+        ), // Reduced vertical padding
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.borderRadiusXS,
+          border: Border.all(color: color.withOpacity(0.5)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 12, color: color), // Reduced from 14
+            SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10, // Reduced from 12
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
             ),
           ],
         ),
@@ -355,182 +485,76 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildProductsRow(List<OrderProduct> products) {
-    return SizedBox(
-      height: 48,
+  Widget _buildSearchBar() {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       child: Row(
         children: [
-          // Ürün görselleri (stack olarak)
-          SizedBox(
-            width: products.length > 1 ? 72 : 48,
-            height: 48,
-            child: Stack(
-              children: products.take(3).toList().asMap().entries.map((entry) {
-                final index = entry.key;
-                final product = entry.value;
-                return Positioned(
-                  left: index * 20.0,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.surface, width: 2),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: product.productImage.isNotEmpty
-                          ? Image.network(
-                              product.productImage,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _buildImagePlaceholder(),
-                            )
-                          : _buildImagePlaceholder(),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          SizedBox(width: AppSpacing.sm),
-          // Ürün isimleri
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: products.take(2).map((product) {
-                return Padding(
-                  padding: EdgeInsets.only(bottom: 2),
-                  child: Row(
-                    children: [
-                      if (product.productIsCanceled)
-                        Container(
-                          width: 6,
-                          height: 6,
-                          margin: EdgeInsets.only(right: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      Expanded(
-                        child: Text(
-                          product.productName,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: product.productIsCanceled
-                                ? AppColors.textTertiary
-                                : AppColors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        'x${product.productQuantity}',
-                        style: TextStyle(
-                          fontSize: 11,
+            child: Container(
+              height: AppSizes.buttonHeightSM,
+              decoration: BoxDecoration(
+                borderRadius: AppRadius.borderRadiusSM,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(width: AppSpacing.md),
+                  Icon(
+                    Icons.search,
+                    color: AppColors.textTertiary,
+                    size: AppSizes.iconSM,
+                  ),
+                  SizedBox(width: AppSpacing.sm),
+
+                  // SEARCH TEXTFIELD
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) {
+                        setState(() => _searchQuery = v);
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Ürün veya marka adına göre ara",
+                        hintStyle: AppTypography.bodySmall.copyWith(
                           color: AppColors.textTertiary,
                         ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        isDense: true,
+                        contentPadding: EdgeInsets.only(
+                          left: 0,
+                          right: AppSpacing.sm,
+                          bottom: 0,
+                        ),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: AppColors.textTertiary,
+                                  size: 14,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = "");
+                                },
+                              )
+                            : null,
                       ),
-                    ],
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
                   ),
-                );
-              }).toList(),
+                ],
+              ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSmallButton(String label, bool isPrimary, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isPrimary ? AppColors.primary : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-          border: isPrimary ? null : Border.all(color: AppColors.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isPrimary ? Colors.white : AppColors.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      color: AppColors.background,
-      child: Icon(
-        Icons.image_outlined,
-        color: AppColors.textTertiary,
-        size: 16,
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Container(
-      padding: EdgeInsets.fromLTRB(AppSpacing.md, 8, AppSpacing.md, 8),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Sipariş kodu veya ürün ara...',
-          hintStyle: TextStyle(
-            fontSize: 14,
-            color: AppColors.textTertiary,
-          ),
-          prefixIcon: Icon(
-            Icons.search,
-            color: AppColors.textTertiary,
-            size: 20,
-          ),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: Icon(
-                    Icons.clear,
-                    color: AppColors.textTertiary,
-                    size: 20,
-                  ),
-                  onPressed: () {
-                    _searchController.clear();
-                  },
-                )
-              : null,
-          filled: true,
-          fillColor: AppColors.background,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.border, width: 1),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.border, width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        ),
-        style: TextStyle(
-          fontSize: 14,
-          color: AppColors.textPrimary,
-        ),
       ),
     );
   }
@@ -543,19 +567,22 @@ class _OrdersPageState extends State<OrdersPage> {
     final statusTitles = _ordersResponse!.statusTitles;
 
     return Container(
-      height: 52,
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: ListView.separated(
+      height: 40, // Reduced from 48
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
+      ),
+      child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm),
         itemCount: statusTitles.length + 1,
-        separatorBuilder: (_, __) => SizedBox(width: 8),
         itemBuilder: (context, index) {
           final isAllFilter = index == 0;
-          final statusId =
-              isAllFilter ? null : statusTitles[index - 1].statusID;
-          final statusName =
-              isAllFilter ? 'Tümü' : statusTitles[index - 1].statusName;
+          final statusId = isAllFilter
+              ? null
+              : statusTitles[index - 1].statusID;
+          final statusName = isAllFilter
+              ? 'Tümü'
+              : statusTitles[index - 1].statusName;
           final isSelected = _selectedStatusFilter == statusId;
 
           return GestureDetector(
@@ -566,24 +593,33 @@ class _OrdersPageState extends State<OrdersPage> {
               });
             },
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                  width: 1,
-                ),
+                border: isSelected
+                    ? Border(
+                        bottom: BorderSide(
+                          color: isAllFilter
+                              ? AppColors.primary
+                              : _parseColor(
+                                  statusTitles[index - 1].statusColor,
+                                ),
+                          width: 2,
+                        ),
+                      )
+                    : null,
               ),
-              child: Center(
-                child: Text(
-                  statusName,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
-                  ),
-                ),
+              alignment: Alignment.center,
+              child: Text(
+                statusName,
+                style: isSelected
+                    ? AppTypography.labelLarge.copyWith(
+                        color: isAllFilter
+                            ? AppColors.primary
+                            : _parseColor(statusTitles[index - 1].statusColor),
+                        fontSize: 13,
+                      )
+                    : AppTypography.bodySmall,
               ),
             ),
           );

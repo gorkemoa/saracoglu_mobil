@@ -85,6 +85,7 @@ class UserOrder {
   final String orderPayment;
   final int orderStatusID;
   final String orderStatusTitle;
+  final String orderStatusColor;
   final String orderDate;
   final String orderDeliveryDate;
   final String orderInvoice;
@@ -101,6 +102,7 @@ class UserOrder {
     required this.orderPayment,
     required this.orderStatusID,
     required this.orderStatusTitle,
+    required this.orderStatusColor,
     required this.orderDate,
     required this.orderDeliveryDate,
     required this.orderInvoice,
@@ -119,6 +121,7 @@ class UserOrder {
       orderPayment: json['orderPayment'] ?? '',
       orderStatusID: json['orderStatusID'] ?? 0,
       orderStatusTitle: json['orderStatusTitle'] ?? '',
+      orderStatusColor: json['orderStatusColor'] ?? '#000000',
       orderDate: json['orderDate'] ?? '',
       orderDeliveryDate: json['orderDeliveryDate'] ?? '',
       orderInvoice: json['orderInvoice'] ?? '',
@@ -126,8 +129,8 @@ class UserOrder {
       totalProduct: json['totalProduct'] ?? 0,
       products: json['products'] != null
           ? (json['products'] as List)
-              .map((p) => OrderProduct.fromJson(p))
-              .toList()
+                .map((p) => OrderProduct.fromJson(p))
+                .toList()
           : [],
     );
   }
@@ -142,6 +145,7 @@ class UserOrder {
       'orderPayment': orderPayment,
       'orderStatusID': orderStatusID,
       'orderStatusTitle': orderStatusTitle,
+      'orderStatusColor': orderStatusColor,
       'orderDate': orderDate,
       'orderDeliveryDate': orderDeliveryDate,
       'orderInvoice': orderInvoice,
@@ -162,22 +166,29 @@ class UserOrder {
 
   /// İade durumunda mı? (İade talep, kargo, inceleme, edildi, reddedildi)
   bool get isReturnStatus => orderStatusID >= 8 && orderStatusID <= 12;
+
+  /// Toplam iptal/iade edilen ürün sayısı
+  int get totalCanceledProduct =>
+      products.fold(0, (sum, product) => sum + product.productCancelQuantity);
 }
 
 /// Sipariş durumu modeli
 class OrderStatusTitle {
   final int statusID;
   final String statusName;
+  final String statusColor;
 
   OrderStatusTitle({
     required this.statusID,
     required this.statusName,
+    required this.statusColor,
   });
 
   factory OrderStatusTitle.fromJson(Map<String, dynamic> json) {
     return OrderStatusTitle(
       statusID: json['statusID'] ?? 0,
       statusName: json['statusName'] ?? '',
+      statusColor: json['statusColor'] ?? '#000000',
     );
   }
 
@@ -185,6 +196,7 @@ class OrderStatusTitle {
     return {
       'statusID': statusID,
       'statusName': statusName,
+      'statusColor': statusColor,
     };
   }
 }
@@ -227,14 +239,12 @@ class UserOrdersResponse {
       emptyMessage: data['emptyMessage'],
       statusTitles: data['statusTitles'] != null
           ? (data['statusTitles'] as List)
-              .map((s) => OrderStatusTitle.fromJson(s))
-              .toList()
+                .map((s) => OrderStatusTitle.fromJson(s))
+                .toList()
           : [],
       totalOrders: data['totalOrders'] ?? 0,
       orders: data['orders'] != null
-          ? (data['orders'] as List)
-              .map((o) => UserOrder.fromJson(o))
-              .toList()
+          ? (data['orders'] as List).map((o) => UserOrder.fromJson(o)).toList()
           : [],
     );
   }
@@ -250,8 +260,7 @@ class UserOrdersResponse {
   }
 
   /// Aktif siparişler (statusID: 1-4)
-  List<UserOrder> get activeOrders =>
-      orders.where((o) => o.isActive).toList();
+  List<UserOrder> get activeOrders => orders.where((o) => o.isActive).toList();
 
   /// Tamamlanan siparişler (statusID: 5)
   List<UserOrder> get completedOrders =>

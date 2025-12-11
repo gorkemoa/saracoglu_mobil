@@ -50,27 +50,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     });
   }
 
-  Color _getStatusColor(int statusID) {
-    switch (statusID) {
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-        return AppColors.info;
-      case 5:
-        return AppColors.success;
-      case 6:
-      case 7:
-      case 12:
-        return AppColors.error;
-      case 8:
-      case 9:
-      case 10:
-        return AppColors.warning;
-      case 11:
-        return AppColors.success;
-      default:
-        return AppColors.textTertiary;
+  Color _parseColor(String colorString) {
+    try {
+      if (colorString.isEmpty) return AppColors.textPrimary;
+      return Color(int.parse(colorString.replaceFirst('#', '0xFF')));
+    } catch (e) {
+      return AppColors.textPrimary;
     }
   }
 
@@ -238,7 +223,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildStatusHeader(OrderDetail order) {
-    final statusColor = _getStatusColor(order.statusID);
+    final statusColor = _parseColor(order.orderStatusColor);
 
     return Container(
       margin: EdgeInsets.all(AppSpacing.md),
@@ -317,7 +302,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildProductItem(OrderDetailProduct product) {
-    final statusColor = _getProductStatusColor(product.productStatus);
+    final statusColor = _parseColor(product.productStatusColor);
 
     return Container(
       margin: EdgeInsets.symmetric(
@@ -391,6 +376,25 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         ),
                       ],
                     ),
+                    if (product.productNotes.isNotEmpty) ...[
+                      SizedBox(height: AppSpacing.sm),
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(AppSpacing.sm),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: AppRadius.borderRadiusSM,
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          product.productNotes,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -412,12 +416,27 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             ),
             child: Row(
               children: [
-                Icon(
-                  _getProductStatusIcon(product.productStatus),
+                if (product.isCargo) ...[
+                  Icon(
+                    Icons.local_shipping_outlined,
+                    size: 16,
+                    color: statusColor,
+                  ),
+                  SizedBox(width: AppSpacing.sm),
+                ],
+                /*Icon(
+                  //_getProductStatusIcon(product.productStatus),
+                   Icons.info, // Removing dependency on status ID for icon, keeping simple or using dynamic if needed, but for now simple circle or dot is better or just text?
+                   // User didn't specify dynamic icons, but existing code used _getProductStatusIcon.
+                   // I should probably keep it or find a way. For now, let's just use the text color and maybe a dot.
+                   // Actually, let's keep the icon if I can map it, but the colors are dynamic now.
+                   // Let's use a generic icon or keep using existing _getProductStatusIcon if statusID is reliable.
+                   // However, modifying _getProductStatusIcon might be needed if status IDs changed.
+                   // Assuming status IDs are consistent with previous logic for Icons.
                   size: 16,
                   color: statusColor,
-                ),
-                SizedBox(width: AppSpacing.sm),
+                ),*/
+                // Let's rely on status text and color mainly.
                 Text(
                   product.productStatusName.isNotEmpty
                       ? product.productStatusName
@@ -478,7 +497,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ],
 
           // Değerlendirme Butonu (Teslim edilen ürünler için)
-          if (product.productStatus == 5 && !product.isCanceled) ...[
+          if (product.isRating) ...[
             SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,
@@ -496,8 +515,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ],
 
           // İptal/İade Butonu
-          if ((product.productStatus == 1 || product.productStatus == 2) &&
-              !product.isCanceled) ...[
+          if (product.isCancelable) ...[
             SizedBox(height: AppSpacing.sm),
             SizedBox(
               width: double.infinity,
@@ -787,42 +805,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
         );
       }
-    }
-  }
-
-  Color _getProductStatusColor(int status) {
-    switch (status) {
-      case 1:
-        return AppColors.warning;
-      case 2:
-      case 3:
-        return AppColors.info;
-      case 4:
-      case 5:
-        return AppColors.success;
-      case 6:
-        return AppColors.error;
-      default:
-        return AppColors.textTertiary;
-    }
-  }
-
-  IconData _getProductStatusIcon(int status) {
-    switch (status) {
-      case 1:
-        return Icons.pending_outlined;
-      case 2:
-        return Icons.check_circle_outline;
-      case 3:
-        return Icons.inventory_2_outlined;
-      case 4:
-        return Icons.local_shipping_outlined;
-      case 5:
-        return Icons.task_alt;
-      case 6:
-        return Icons.cancel_outlined;
-      default:
-        return Icons.info_outline;
     }
   }
 

@@ -8,6 +8,7 @@ class OrderDetailProduct {
   final int productStatus;
   final String productStatusText;
   final String productStatusName;
+  final String productStatusColor;
   final int productQuantity;
   final int productCancelQuantity;
   final int productCurrentQuantity;
@@ -33,6 +34,7 @@ class OrderDetailProduct {
     required this.productStatus,
     required this.productStatusText,
     required this.productStatusName,
+    required this.productStatusColor,
     required this.productQuantity,
     required this.productCancelQuantity,
     required this.productCurrentQuantity,
@@ -60,6 +62,7 @@ class OrderDetailProduct {
       productStatus: json['productStatus'] ?? 0,
       productStatusText: json['productStatusText'] ?? '',
       productStatusName: json['productStatusName'] ?? '',
+      productStatusColor: json['productStatusColor'] ?? '#000000',
       productQuantity: json['productQuantity'] ?? 0,
       productCancelQuantity: json['productCancelQuantity'] ?? 0,
       productCurrentQuantity: json['productCurrentQuantity'] ?? 0,
@@ -157,11 +160,11 @@ class OrderAddresses {
 
   factory OrderAddresses.fromJson(Map<String, dynamic> json) {
     return OrderAddresses(
-      shipping: json['shipping'] != null 
-          ? OrderAddress.fromJson(json['shipping']) 
+      shipping: json['shipping'] != null
+          ? OrderAddress.fromJson(json['shipping'])
           : null,
-      billing: json['billing'] != null 
-          ? OrderAddress.fromJson(json['billing']) 
+      billing: json['billing'] != null
+          ? OrderAddress.fromJson(json['billing'])
           : null,
     );
   }
@@ -202,6 +205,7 @@ class OrderDetail {
   final int stateOrder;
   final String orderStatusID;
   final String orderStatus;
+  final String orderStatusColor;
   final String orderDate;
   final String deliveryDate;
   final String orderInvoice;
@@ -222,6 +226,7 @@ class OrderDetail {
     required this.stateOrder,
     required this.orderStatusID,
     required this.orderStatus,
+    required this.orderStatusColor,
     required this.orderDate,
     required this.deliveryDate,
     required this.orderInvoice,
@@ -244,6 +249,7 @@ class OrderDetail {
       stateOrder: json['stateOrder'] ?? 0,
       orderStatusID: json['orderStatusID']?.toString() ?? '',
       orderStatus: json['orderStatus'] ?? '',
+      orderStatusColor: json['orderStatusColor'] ?? '#000000',
       orderDate: json['orderDate'] ?? '',
       deliveryDate: json['deliveryDate'] ?? '',
       orderInvoice: json['orderInvoice'] ?? '',
@@ -252,14 +258,14 @@ class OrderDetail {
       salesAgreement: json['SalesAgreement'] ?? '',
       products: json['products'] != null
           ? (json['products'] as List)
-              .map((p) => OrderDetailProduct.fromJson(p))
-              .toList()
+                .map((p) => OrderDetailProduct.fromJson(p))
+                .toList()
           : [],
-      addresses: json['addresses'] != null 
-          ? OrderAddresses.fromJson(json['addresses']) 
+      addresses: json['addresses'] != null
+          ? OrderAddresses.fromJson(json['addresses'])
           : null,
-      cardInfo: json['cardInfo'] != null 
-          ? OrderCardInfo.fromJson(json['cardInfo']) 
+      cardInfo: json['cardInfo'] != null
+          ? OrderCardInfo.fromJson(json['cardInfo'])
           : null,
     );
   }
@@ -273,11 +279,7 @@ class OrderDetailResponse {
   final String? message;
   final OrderDetail? order;
 
-  OrderDetailResponse({
-    required this.isSuccess,
-    this.message,
-    this.order,
-  });
+  OrderDetailResponse({required this.isSuccess, this.message, this.order});
 
   factory OrderDetailResponse.fromJson(Map<String, dynamic> json) {
     final data = json['data'];
@@ -291,9 +293,6 @@ class OrderDetailResponse {
   }
 
   factory OrderDetailResponse.errorResponse(String message) {
-    return OrderDetailResponse(
-      isSuccess: false,
-      message: message,
-    );
+    return OrderDetailResponse(isSuccess: false, message: message);
   }
 }
