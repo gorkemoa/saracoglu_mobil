@@ -8,6 +8,7 @@ import '../services/product_service.dart';
 import '../services/favorite_service.dart';
 import '../services/basket_service.dart';
 import '../services/banner_service.dart';
+import '../services/notification_service.dart';
 import '../models/product/product_model.dart';
 import '../models/product/category_model.dart';
 import '../models/banner/banner_model.dart';
@@ -28,11 +29,16 @@ class HomeContentState extends State<HomeContent> {
   final PageController _bannerController = PageController();
   Timer? _bannerTimer;
 
-  // Product service
+  // Services
   final ProductService _productService = ProductService();
   final FavoriteService _favoriteService = FavoriteService();
   final BasketService _basketService = BasketService();
   final BannerService _bannerService = BannerService();
+  final NotificationService _notificationService = NotificationService();
+  final AuthService _authService = AuthService();
+
+  // Bildirimler state
+  int _unreadNotificationCount = 0;
 
   // Yeni ürünler state
   List<ProductModel> _newProducts = [];
@@ -55,11 +61,30 @@ class HomeContentState extends State<HomeContent> {
     super.initState();
     _startBannerTimer();
     _loadProducts();
+    _loadNotifications();
   }
 
   /// Sayfayı yenile - MainScreen'den çağrılır
   void refresh() {
     _loadProducts();
+    _loadNotifications();
+  }
+
+  /// Bildirimleri yükle
+  Future<void> _loadNotifications() async {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    final notifications = await _notificationService.getNotifications(
+      userId: user.id,
+    );
+
+    if (mounted) {
+      setState(() {
+        _unreadNotificationCount =
+            notifications.where((n) => !n.isRead).length;
+      });
+    }
   }
 
   /// Ürünleri yükle
@@ -312,20 +337,51 @@ class HomeContentState extends State<HomeContent> {
                 return;
               }
               if (!mounted) return;
-              Navigator.pushNamed(context, '/notifications');
+              Navigator.pushNamed(context, '/notifications').then((_) {
+                _loadNotifications();
+              });
             },
-            child: Container(
-              padding: EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: AppRadius.borderRadiusXS,
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Icon(
-                Icons.notifications_outlined,
-                color: AppColors.textPrimary,
-                size: AppSizes.iconMD,
-              ),
+            child: Stack(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadius.borderRadiusXS,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Icon(
+                    Icons.notifications_outlined,
+                    color: AppColors.textPrimary,
+                    size: AppSizes.iconMD,
+                  ),
+                ),
+                if (_unreadNotificationCount > 0)
+                  Positioned(
+                    top: 5,
+                    right: 5,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xs,
+                        vertical: AppSpacing.xxs,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _unreadNotificationCount > 9
+                            ? '9+'
+                            : _unreadNotificationCount.toString(),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.textOnPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

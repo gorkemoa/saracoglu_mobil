@@ -39,6 +39,16 @@ class ApiConstants {
   /// getNotifications endpoint - kullanımı: '${ApiConstants.getNotifications}/$userId/notifications'
   static const String getNotifications = 'service/user/account';
 
+  /// Notification Actions Endpoints
+  /// Tüm bildirimleri okundu olarak işaretle
+  static const String allReadNotifications = 'service/user/account/notification/allRead';
+  /// Tek bildirimi okundu olarak işaretle
+  static const String readNotification = 'service/user/account/notification/read';
+  /// Tek bildirimi sil
+  static const String deleteNotification = 'service/user/account/notification/delete';
+  /// Tüm bildirimleri sil
+  static const String deleteAllNotifications = 'service/user/account/notification/allDelete';
+
   /// Address Endpoints
   static const String addAddress = 'service/user/account/address/add';
   static const String getUserAddresses = 'service/user/account/address/list';
