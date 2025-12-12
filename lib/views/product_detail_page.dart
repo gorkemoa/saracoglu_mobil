@@ -291,13 +291,23 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             shape: BoxShape.circle,
             boxShadow: AppShadows.shadowSM,
           ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.share_outlined,
-              color: AppColors.textPrimary,
-              size: 18,
-            ),
-            onPressed: () => _shareProduct(),
+          child: Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(
+                  Icons.share_outlined,
+                  color: AppColors.textPrimary,
+                  size: 18,
+                ),
+                onPressed: () {
+                  final box = context.findRenderObject() as RenderBox?;
+                  Rect? shareOrigin = box != null
+                      ? box.localToGlobal(Offset.zero) & box.size
+                      : null;
+                  _shareProduct(sharePositionOrigin: shareOrigin);
+                },
+              );
+            },
           ),
         ),
       ],
@@ -988,7 +998,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   // --- Action Methods ---
 
-  void _shareProduct() {
+  void _shareProduct({Rect? sharePositionOrigin}) {
     if (_product == null) return;
 
     final String shareText =
@@ -996,7 +1006,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         "${_product!.productPrice} TL\n\n"
         "İncelemek için: https://saracoglu.com/urun/${_product!.productID}";
 
-    Share.share(shareText);
+    Share.share(shareText, sharePositionOrigin: sharePositionOrigin);
   }
 
   Future<void> _toggleFavorite() async {
