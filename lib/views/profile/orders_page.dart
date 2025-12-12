@@ -252,10 +252,6 @@ class _OrdersPageState extends State<OrdersPage> {
   Widget _buildOrderCard(UserOrder order) {
     final statusColor = _parseColor(order.orderStatusColor);
     final isCompleted = order.orderStatusID == 5; // Assuming 5 is Delivered
-    final deliveredCount = order.products.fold(
-      0,
-      (sum, product) => sum + product.productCurrentQuantity,
-    );
 
     return GestureDetector(
       onTap: () {
@@ -336,32 +332,31 @@ class _OrdersPageState extends State<OrdersPage> {
                   },
                   child: Padding(
                     padding: EdgeInsets.only(
-                      top: 6,
+                      top: 5,
                     ), // Görseldeki hafif aşağı hizalama
                     child: Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppColors.primary),
-                      ),
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacing.xs,
                         vertical: AppSpacing.xxs,
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.max,
                         crossAxisAlignment:
                             CrossAxisAlignment.center, // Dikey ortalama
                         children: [
                           Text(
                             'Detaylar',
-                            style: AppTypography.labelSmall.copyWith(
+                            style: AppTypography.labelMedium.copyWith(
                               color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-
-                          Icon(
-                            Icons.chevron_right,
-                            size: AppSizes.iconXS,
-                            color: AppColors.primary,
+                          Padding(
+                            padding: EdgeInsets.only(top: 2), //
+                            child: Icon(
+                              Icons.chevron_right,
+                              size: AppSizes.iconXS,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -449,23 +444,12 @@ class _OrdersPageState extends State<OrdersPage> {
 
             // Footer Info RIDVAN DÜZELTECEK LÜTFEN ŞİKAYET ETME BENİ
             Text(
-              '${order.totalProduct} üründen, ${deliveredCount} ürün teslim edildi',
+              '${order.orderStatusText}',
               style: AppTypography.bodySmall.copyWith(
                 fontSize: 10,
                 color: AppColors.textTertiary,
               ),
             ),
-            if (isCompleted == false && order.products.length > deliveredCount)
-              Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Text(
-                  '${order.totalProduct} üründen ${order.totalCanceledProduct} ürün iade edildi/iptal edildi',
-                  style: AppTypography.bodySmall.copyWith(
-                    fontSize: 10,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
           ],
         ),
       ),
@@ -509,27 +493,13 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Widget _buildSearchBar() {
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.xs,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: AppSpacing.xs),
       child: Row(
         children: [
           Expanded(
-            child: Container(
-              height: AppSizes.buttonHeightSM,
-              decoration: BoxDecoration(
-                borderRadius: AppRadius.borderRadiusSM,
-                border: Border.all(color: AppColors.border),
-              ),
+            child: SizedBox(
               child: Row(
                 children: [
-                  SizedBox(width: AppSpacing.md),
-                  Icon(
-                    Icons.search,
-                    color: AppColors.textTertiary,
-                    size: AppSizes.iconSM,
-                  ),
                   SizedBox(width: AppSpacing.sm),
 
                   // SEARCH TEXTFIELD
@@ -540,18 +510,19 @@ class _OrdersPageState extends State<OrdersPage> {
                         setState(() => _searchQuery = v);
                       },
                       decoration: InputDecoration(
-                        hintText: "Ürün veya marka adına göre ara",
+                        hintText: "Sipariş Ara",
                         hintStyle: AppTypography.bodySmall.copyWith(
                           color: AppColors.textTertiary,
                         ),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: AppColors.textTertiary,
+                          size: AppSizes.iconSM,
+                        ),
                         isDense: true,
                         contentPadding: EdgeInsets.only(
-                          left: 0,
+                          left: 20,
                           right: AppSpacing.sm,
-                          bottom: 0,
                         ),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(

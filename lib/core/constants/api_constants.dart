@@ -116,6 +116,10 @@ class ApiConstants {
   static const String getOrderStatusList =
       'service/general/general/order/statusList';
 
+  /// İptal nedenleri listesi
+  static const String getCancelTypes =
+      'service/general/general/order/cancelTypes';
+
   /// Contact Endpoints
   static const String getContactSubjects =
       'service/general/general/contact/subjects';

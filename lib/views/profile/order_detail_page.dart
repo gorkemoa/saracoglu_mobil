@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/order/order_detail_model.dart';
+
 import '../../services/order_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -108,35 +109,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Widget _buildBottomAction() {
-    if (_selectedProductIds.isEmpty) return SizedBox.shrink();
-
-    return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: ElevatedButton(
-          onPressed: _showBulkCancelDialog,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.error,
-            foregroundColor: Colors.white,
-            padding: EdgeInsets.symmetric(vertical: 16),
-          ),
-          child: Text(
-            'Seçili Ürünleri (${_selectedProductIds.length}) İade/İptal Et',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
-    );
+    // Bulk selection removed as per redesign
+    return SizedBox.shrink();
   }
 
   Widget _buildLoadingState() {
@@ -188,11 +162,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           _buildOrderSummaryHeader(order),
           Divider(thickness: 8, color: AppColors.background), // Kalın ayırıcı
           // 2. Tahmini Teslimat
-          if (order.deliveryDate.isNotEmpty ||
-              true) // Her zaman gösterelim veya koşula bağlayalım
-            _buildDeliveryAndSellerInfo(order),
-
-          Divider(thickness: 1, color: const Color.fromARGB(255, 11, 10, 10)),
 
           // 3. Sipariş Durum Çubuğu (Progress Bar)
           _buildOrderProgressBar(order),
@@ -200,8 +169,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           Divider(thickness: 8, color: AppColors.background),
 
           // 4. Kargo ve Teslimat Detayı (Metin olarak)
-          if (order.products.any((p) => p.cargoCompany.isNotEmpty))
-            _buildCargoCompanyInfo(order),
+          // 4. Kargo ve Teslimat Detayı (Metin olarak)
+          // Removed global cargo info as per redesign - now inside product items
 
           // 5. Ürünler Listesi
           ...order.products.map((product) => _buildProductItem(product)),
@@ -213,7 +182,15 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             _buildAddressSection(
               order.addresses!.shipping!,
               'Teslimat Adresi',
-            ), // Başlık değişebilir
+              cargoCompany: order.products.isNotEmpty
+                  ? order.products
+                        .firstWhere(
+                          (p) => p.cargoCompany.isNotEmpty,
+                          orElse: () => order.products.first,
+                        )
+                        .cargoCompany
+                  : null,
+            ),
 
           if (order.addresses?.billing != null)
             _buildAddressSection(order.addresses!.billing!, 'Fatura Adresi'),
@@ -301,36 +278,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDeliveryAndSellerInfo(OrderDetail order) {
-    return Container(
-      color: AppColors.surface,
-      padding: EdgeInsets.all(AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (order.deliveryDate.isNotEmpty)
-            _buildSummaryRow('Teslimat Tarihi:', order.deliveryDate),
-          _buildSummaryRow('Teslimat No:', order.orderCode),
-
-          SizedBox(height: AppSpacing.md),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  child: Text(
-                    'Siparişi Değerlendir',
-                    style: TextStyle(fontSize: 12),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -434,91 +381,80 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  Widget _buildCargoCompanyInfo(OrderDetail order) {
-    // Sadece ilk kargo bilgisini gösterelim veya genel bir bilgi
-    return Container(
-      color: AppColors.surface,
-      padding: EdgeInsets.all(AppSpacing.md),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (order.deliveryDate.isNotEmpty)
-                Text(
-                  'Aşağıdaki ürünler ${order.deliveryDate} tarihinde teslim edilecektir.',
-                  style: AppTypography.bodySmall,
-                ), // Örnek metin
-              Text(
-                'Kargo Firması: ${order.products.first.cargoCompany}',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          TextButton(
-            onPressed: () {
-              if (order.products.first.trackingURL.isNotEmpty)
-                _openUrl(order.products.first.trackingURL);
-            },
-            child: Text(
-              'Teslimat Detay',
-              style: TextStyle(color: AppColors.warning),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // _buildCargoCompanyInfo removed - content moved to _buildProductItem
 
   Widget _buildProductItem(OrderDetailProduct product) {
     return Container(
-      padding: EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
       decoration: BoxDecoration(color: AppColors.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (product.isCancelReturn)
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0, top: 24),
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Checkbox(
-                      value: _selectedProductIds.contains(product.productID),
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            _selectedProductIds.add(product.productID);
-                          } else {
-                            _selectedProductIds.remove(product.productID);
-                          }
-                        });
-                      },
-                      activeColor: AppColors.error,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+          // Delivery & Cargo Header for Product
+          if (product.deliveryDate.isNotEmpty ||
+              product.cargoCompany.isNotEmpty) ...[
+            Container(
+              padding: EdgeInsets.only(bottom: AppSpacing.sm),
+              margin: EdgeInsets.only(bottom: AppSpacing.sm),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppColors.border, width: 0.5),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (product.deliveryDate.isNotEmpty)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.local_shipping_outlined,
+                          size: 16,
+                          color: AppColors.success,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Teslimat: ${product.deliveryDate}',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (product.cargoCompany.isNotEmpty) ...[
+                    if (product.deliveryDate.isNotEmpty) SizedBox(height: 4),
+                    Text(
+                      'Kargo: ${product.cargoCompany}',
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
-                ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
               ClipRRect(
                 borderRadius: AppRadius.borderRadiusSM,
                 child: Image.network(
                   product.productImage,
-                  width: 80,
+                  width: 70, // Slightly smaller
                   height: 100,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    width: 80,
-                    height: 100,
+                    width: 70,
+                    height: 90,
                     color: AppColors.background,
-                    child: Icon(Icons.image_outlined, size: 32),
+                    child: Icon(Icons.image_outlined, size: 28),
                   ),
                 ),
               ),
@@ -527,62 +463,178 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.cargoCompany,
-
-                      style: AppTypography.labelMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 2),
                     Text(
                       product.productName,
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 2),
                     Text(
                       'Adet: ${product.productQuantity}',
-                      style: AppTypography.bodySmall.copyWith(
+                      style: AppTypography.labelSmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
-                    SizedBox(height: AppSpacing.sm),
+                    SizedBox(height: 4),
                     Text(
                       product.productPrice,
-                      style: AppTypography.h5.copyWith(
-                        color: AppColors.warning,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: AppSpacing.md),
-                    if (product.isRating)
-                      SizedBox(
-                        height: 32,
-                        child: ElevatedButton(
-                          onPressed: () => _showReviewDialog(product),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.warning,
-                            foregroundColor: Colors.white,
-                            textStyle: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+
+                    // Tracking Number
+                    if (product.trackingNumber.isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      InkWell(
+                        onTap: () {
+                          Clipboard.setData(
+                            ClipboardData(text: product.trackingNumber),
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Takip numarası kopyalandı'),
+                              duration: Duration(seconds: 1),
                             ),
-                            padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          child: Text('Ürünü Değerlendir'),
+                          decoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.copy,
+                                size: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Takip No: ${product.trackingNumber}',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                    ],
+
+                    SizedBox(height: 8),
+                    // Action Buttons Row
+                    Row(
+                      children: [
+                        if (product.isCargo)
+                          Expanded(
+                            child: SizedBox(
+                              height: 32,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  if (product.trackingURL.isNotEmpty) {
+                                    _openUrl(product.trackingURL);
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide.none,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: Text(
+                                  'Kargo Takip',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (product.isCargo &&
+                            (product.isRating ||
+                                (!product.isCanceled && product.isCancelable)))
+                          SizedBox(width: 8),
+                        if (product.isRating)
+                          Expanded(
+                            child: SizedBox(
+                              height: 32,
+                              child: OutlinedButton(
+                                onPressed: () => _showReviewDialog(product),
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: AppColors.warning,
+                                  foregroundColor: Colors.white,
+                                  side: BorderSide.none,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: Text(
+                                  'Değerlendir',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        if (product.isRating &&
+                            (!product.isCanceled && product.isCancelable))
+                          SizedBox(width: 8),
+                        if (!product.isCanceled && product.isCancelable)
+                          Expanded(
+                            child: SizedBox(
+                              height: 32,
+                              child: OutlinedButton(
+                                onPressed: () =>
+                                    _showBulkCancelDialog([product]),
+                                style: OutlinedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: AppColors.textSecondary,
+                                  side: BorderSide(color: AppColors.border),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  padding: EdgeInsets.zero,
+                                ),
+                                child: Text(
+                                  'İptal/İade',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-
           if (product.productNotes.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
@@ -590,6 +642,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 'Not: ${product.productNotes}',
                 style: AppTypography.bodySmall.copyWith(
                   fontStyle: FontStyle.italic,
+                  fontSize: 11,
                 ),
               ),
             ),
@@ -598,23 +651,48 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  Future<void> _showBulkCancelDialog() async {
-    final TextEditingController reasonController = TextEditingController();
-    // Varsayılan iptal tipi: Vazgeçtim (4)
-    int selectedReasonId = 4;
+  Future<void> _showBulkCancelDialog([
+    List<OrderDetailProduct>? explicitProducts,
+  ]) async {
+    // 1. Loading göster ve nedenleri çek
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) =>
+          Center(child: CircularProgressIndicator(color: AppColors.error)),
+    );
 
-    // Basit iptal sebepleri
-    final reasons = [
-      {'id': 4, 'label': 'Vazgeçtim'},
-      {'id': 1, 'label': 'Yanlış Ürün'},
-      {'id': 2, 'label': 'Hasarlı Ürün'},
-      {'id': 3, 'label': 'Diğer'},
-    ];
+    final reasonsResponse = await _orderService.getCancelTypes();
+    if (!mounted) return;
+    Navigator.pop(context); // Loading kapat
+
+    if (!reasonsResponse.isSuccess || reasonsResponse.types.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            reasonsResponse.message ?? 'İptal nedenleri yüklenemedi',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    final reasonTypes = reasonsResponse.types;
+    int selectedReasonId = reasonTypes.first.typeID;
+    final TextEditingController reasonController = TextEditingController();
 
     // Seçili ürünleri bul
-    final selectedProducts = _orderDetail!.products
-        .where((p) => _selectedProductIds.contains(p.productID))
-        .toList();
+    List<OrderDetailProduct> selectedProducts = [];
+
+    if (explicitProducts != null && explicitProducts.isNotEmpty) {
+      selectedProducts = explicitProducts;
+    } else {
+      selectedProducts = _orderDetail!.products
+          .where((p) => _selectedProductIds.contains(p.productID))
+          .toList();
+    }
 
     // Her ürün için adet takibi (Default 1)
     // Key: productID, Value: quantity
@@ -759,11 +837,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                         vertical: 0,
                       ),
                     ),
-                    items: reasons
+                    items: reasonTypes
                         .map(
                           (r) => DropdownMenuItem<int>(
-                            value: r['id'] as int,
-                            child: Text(r['label'] as String),
+                            value: r.typeID,
+                            child: Text(r.typeName),
                           ),
                         )
                         .toList(),
@@ -812,10 +890,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                                 .map(
                                   (p) => {
                                     'productID': p.productID,
-                                    'quantity':
+                                    'productQuantity':
                                         productQuantities[p.productID] ?? 1,
-                                    'reasonId': selectedReasonId,
-                                    'description': reasonController
+                                    'cancelType': selectedReasonId,
+                                    'cancelDesc': reasonController
                                         .text, // Same desc for all
                                   },
                                 )
@@ -881,80 +959,178 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     }
   }
 
-  Widget _buildAddressSection(OrderAddress address, String title) {
+  Widget _buildAddressSection(
+    OrderAddress address,
+    String title, {
+    String? cargoCompany,
+  }) {
+    final isDeliveryAddress = title.contains('Teslimat');
+
     return Container(
-      color: AppColors.surface,
-      padding: EdgeInsets.all(AppSpacing.lg),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      padding: EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusMD,
+        border: Border.all(color: AppColors.border.withOpacity(0.5)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          SizedBox(height: AppSpacing.md),
-          Text(
-            'Alıcı: ${address.addressName}',
-            style: AppTypography.bodyMedium,
-          ),
-          SizedBox(height: AppSpacing.xs),
-          Text(
-            address.addressTitle,
-            style: AppTypography.labelMedium.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: AppSpacing.xs),
-          Text(
-            address.address,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          if (address.addressCity.isNotEmpty)
-            Text(
-              '${address.addressDistrict} / ${address.addressCity}',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textSecondary,
+          // Header Row
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.labelLarge.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (address.addressTitle.isNotEmpty)
+                      Text(
+                        address.addressTitle,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                  ],
+                ),
               ),
+            ],
+          ),
+
+          Divider(
+            height: AppSpacing.lg,
+            color: AppColors.border.withOpacity(0.5),
+          ),
+
+          // Recipient Info
+          _buildAddressInfoRow(
+            Icons.person_outline,
+            'Alıcı',
+            address.addressName,
+          ),
+          SizedBox(height: AppSpacing.sm),
+
+          // Address
+          _buildAddressInfoRow(
+            Icons.location_on_outlined,
+            'Adres',
+            '${address.address}\n${address.addressNeighbourhood.isNotEmpty ? address.addressNeighbourhood + ', ' : ''}${address.addressDistrict}/${address.addressCity}',
+          ),
+          SizedBox(height: AppSpacing.sm),
+
+          // Phone
+          _buildAddressInfoRow(
+            Icons.phone_outlined,
+            'Telefon',
+            address.addressPhone,
+          ),
+
+          // Cargo Company (only for delivery address)
+          if (isDeliveryAddress &&
+              cargoCompany != null &&
+              cargoCompany.isNotEmpty) ...[
+            SizedBox(height: AppSpacing.sm),
+            _buildAddressInfoRow(
+              Icons.local_shipping,
+              'Kargo Firması',
+              cargoCompany,
             ),
-          SizedBox(height: AppSpacing.xs),
-          Text(address.addressPhone, style: AppTypography.bodySmall),
+          ],
         ],
       ),
     );
   }
 
+  Widget _buildAddressInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: AppColors.textSecondary),
+        SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTypography.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                value,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPaymentSection(OrderDetail order) {
+    double discount = _parsePrice(order.orderDiscount);
+
+    // Format strings
+
     return Container(
       color: AppColors.surface,
       padding: EdgeInsets.all(AppSpacing.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Ödeme Bilgileri', style: AppTypography.h5),
-              // Show card icon
+              Text(
+                'Ödeme Bilgileri',
+                style: AppTypography.h5.copyWith(fontWeight: FontWeight.bold),
+              ),
               if (order.cardInfo != null)
                 Row(
                   children: [
-                    Icon(Icons.credit_card, color: AppColors.error),
-                    SizedBox(width: 4),
+                    // Masterpass/Card Icon simulation
+                    Text(order.cardInfo!.cardBankName),
+                    SizedBox(width: 8),
                     Text(
-                      '**** **** ${order.cardInfo!.cardNumber.length > 4 ? order.cardInfo!.cardNumber.substring(order.cardInfo!.cardNumber.length - 4) : order.cardInfo!.cardNumber}',
-                      style: AppTypography.bodyMedium,
+                      '**** **** ${order.cardInfo!.cardNumber.length > 4 ? order.cardInfo!.cardNumber.substring(order.cardInfo!.cardNumber.length - 4) : order.cardInfo!.cardNumber} - ${order.orderInstallment}',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
             ],
           ),
+
           SizedBox(height: AppSpacing.md),
-          //_buildPaymentRow('Ara Toplam', order.orderAmount),
-          _buildPaymentRow('Toplam', order.orderAmount, isTotal: true),
+
+          // Financial Rows
+          _buildPaymentRow('Ara Toplam', order.orderSubTotal),
+          _buildPaymentRow('Kargo', order.orderCargoAmount),
+
+          if (discount > 0.01)
+            _buildPaymentRow('İndirim', '-${order.orderDiscount}'),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Divider(height: 1, color: AppColors.border),
+          ),
+
+          _buildPaymentRow('Toplam:', order.orderAmount, isTotal: true),
         ],
       ),
     );
@@ -962,14 +1138,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Widget _buildPaymentRow(String label, String value, {bool isTotal = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: isTotal
-                ? AppTypography.h5
+                ? AppTypography.bodyLarge.copyWith(color: AppColors.textPrimary)
                 : AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -978,11 +1154,34 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             value,
             style: isTotal
                 ? AppTypography.h5.copyWith(color: AppColors.warning)
-                : AppTypography.bodyMedium,
+                : AppTypography.bodyMedium.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
           ),
         ],
       ),
     );
+  }
+
+  // Helper methods for price parsing
+  double _parsePrice(String priceStr) {
+    if (priceStr.isEmpty) return 0.0;
+    try {
+      // Remove ' TL', 'TL', whitespace
+      String clean = priceStr.replaceAll(' TL', '').replaceAll('TL', '').trim();
+
+      // Handle Turkish locale: 1.234,56 -> 1234.56
+      // Remove thousand separators (.)
+      clean = clean.replaceAll('.', '');
+      // Replace decimal separator (,) with (.)
+      clean = clean.replaceAll(',', '.');
+
+      return double.parse(clean);
+    } catch (e) {
+      debugPrint('Error parsing price: $priceStr - $e');
+      return 0.0;
+    }
   }
 
   Widget _buildContractsSection(OrderDetail order) {

@@ -7,6 +7,7 @@ import '../services/product_service.dart';
 import '../services/favorite_service.dart';
 import '../services/basket_service.dart';
 import '../models/product/product_model.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Ürün Detay Sayfası
 class ProductDetailPage extends StatefulWidget {
@@ -270,7 +271,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         Container(
           margin: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: AppColors.surface.withOpacity(0.95),
+            color: AppColors.surface.withOpacity(0.75),
             shape: BoxShape.circle,
             boxShadow: AppShadows.shadowSM,
           ),
@@ -286,7 +287,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         Container(
           margin: const EdgeInsets.only(right: 12, top: 6, bottom: 6),
           decoration: BoxDecoration(
-            color: AppColors.surface.withOpacity(0.95),
+            color: AppColors.surface.withOpacity(0.75),
             shape: BoxShape.circle,
             boxShadow: AppShadows.shadowSM,
           ),
@@ -311,7 +312,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               itemBuilder: (context, index) {
                 return Container(
                   color: AppColors.surface,
-                  padding: const EdgeInsets.all(24),
                   child: _buildProductImage(images[index]),
                 );
               },
@@ -348,7 +348,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   Widget _buildProductImage(String imageUrl) {
     return Image.network(
       imageUrl,
-      fit: BoxFit.contain,
+      fit: BoxFit.fill,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Center(
@@ -989,14 +989,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   // --- Action Methods ---
 
   void _shareProduct() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${_product!.productName} paylaşılıyor...'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),
-      ),
-    );
+    if (_product == null) return;
+
+    final String shareText =
+        "${_product!.productName}\n\n"
+        "${_product!.productPrice} TL\n\n"
+        "İncelemek için: https://saracoglu.com/urun/${_product!.productID}";
+
+    Share.share(shareText);
   }
 
   Future<void> _toggleFavorite() async {
@@ -1036,7 +1036,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               ],
             ),
             backgroundColor: response.isFavorite
-                ? AppColors.error
+                ? AppColors.success
                 : AppColors.textPrimary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -1185,7 +1185,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             Expanded(child: Text('$productName favorilere eklendi')),
           ],
         ),
-        backgroundColor: AppColors.error,
+        backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
         margin: EdgeInsets.all(AppSpacing.md),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusSM),

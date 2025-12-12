@@ -205,6 +205,31 @@ class OrderService {
       );
     }
   }
+
+  /// Sipariş iptal nedenlerini getir
+  Future<OrderCancelTypeListResponse> getCancelTypes() async {
+    try {
+      _logger.d('📤 Get Cancel Types Request');
+
+      final result = await _networkService.get(ApiConstants.getCancelTypes);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        return OrderCancelTypeListResponse.fromJson(result.data!);
+      } else {
+        return OrderCancelTypeListResponse.errorResponse(
+          result.errorMessage ?? 'İptal nedenleri yüklenirken hata oluştu',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ İptal nedenleri getirme hatası', error: e);
+      return OrderCancelTypeListResponse.errorResponse(
+        'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
 }
 
 /// Yorum ekleme response modeli

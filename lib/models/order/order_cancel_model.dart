@@ -73,3 +73,57 @@ class CanceledProduct {
     );
   }
 }
+
+/// İptal nedeni tipi modeli
+class OrderCancelType {
+  final int typeID;
+  final String typeName;
+
+  OrderCancelType({required this.typeID, required this.typeName});
+
+  factory OrderCancelType.fromJson(Map<String, dynamic> json) {
+    return OrderCancelType(
+      typeID: json['typeID'] ?? 0,
+      typeName: json['typeName'] ?? '',
+    );
+  }
+}
+
+/// İptal nedenleri response modeli
+class OrderCancelTypeListResponse {
+  final bool isSuccess;
+  final String? message;
+  final List<OrderCancelType> types;
+
+  OrderCancelTypeListResponse({
+    required this.isSuccess,
+    this.message,
+    required this.types,
+  });
+
+  factory OrderCancelTypeListResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'];
+    final isSuccess = json['success'] == true;
+
+    List<OrderCancelType> typesList = [];
+    if (data != null && data['types'] != null) {
+      typesList = (data['types'] as List)
+          .map((e) => OrderCancelType.fromJson(e))
+          .toList();
+    }
+
+    return OrderCancelTypeListResponse(
+      isSuccess: isSuccess,
+      message: json['message'],
+      types: typesList,
+    );
+  }
+
+  factory OrderCancelTypeListResponse.errorResponse(String message) {
+    return OrderCancelTypeListResponse(
+      isSuccess: false,
+      message: message,
+      types: [],
+    );
+  }
+}

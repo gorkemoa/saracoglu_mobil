@@ -1,16 +1,9 @@
-/// İletişim Bilgileri Model
-/// API: service/general/general/contact/infos
-
 class ContactInfoResponse {
   final bool error;
   final bool success;
   final ContactInfo? data;
 
-  ContactInfoResponse({
-    required this.error,
-    required this.success,
-    this.data,
-  });
+  ContactInfoResponse({required this.error, required this.success, this.data});
 
   bool get isSuccess => success && !error;
 

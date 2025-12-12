@@ -83,11 +83,11 @@ class UserOrder {
   final String orderDiscount;
   final String orderDesc;
   final String orderPayment;
+  final String orderStatusText;
   final int orderStatusID;
   final String orderStatusTitle;
   final String orderStatusColor;
   final String orderDate;
-  final String orderDeliveryDate;
   final String orderInvoice;
   final bool isCanceled;
   final int totalProduct;
@@ -100,11 +100,11 @@ class UserOrder {
     required this.orderDiscount,
     required this.orderDesc,
     required this.orderPayment,
+    required this.orderStatusText,
     required this.orderStatusID,
     required this.orderStatusTitle,
     required this.orderStatusColor,
     required this.orderDate,
-    required this.orderDeliveryDate,
     required this.orderInvoice,
     required this.isCanceled,
     required this.totalProduct,
@@ -119,11 +119,11 @@ class UserOrder {
       orderDiscount: json['orderDiscount'] ?? '',
       orderDesc: json['orderDesc'] ?? '',
       orderPayment: json['orderPayment'] ?? '',
+      orderStatusText: json['orderStatusText'] ?? '',
       orderStatusID: json['orderStatusID'] ?? 0,
       orderStatusTitle: json['orderStatusTitle'] ?? '',
       orderStatusColor: json['orderStatusColor'] ?? '#000000',
       orderDate: json['orderDate'] ?? '',
-      orderDeliveryDate: json['orderDeliveryDate'] ?? '',
       orderInvoice: json['orderInvoice'] ?? '',
       isCanceled: json['isCanceled'] ?? false,
       totalProduct: json['totalProduct'] ?? 0,
@@ -147,7 +147,6 @@ class UserOrder {
       'orderStatusTitle': orderStatusTitle,
       'orderStatusColor': orderStatusColor,
       'orderDate': orderDate,
-      'orderDeliveryDate': orderDeliveryDate,
       'orderInvoice': orderInvoice,
       'isCanceled': isCanceled,
       'totalProduct': totalProduct,

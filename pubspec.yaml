@@ -42,6 +42,7 @@ dependencies:
   flutter_html: ^3.0.0-beta.2
   firebase_core: ^4.2.1
   firebase_messaging: ^16.0.4
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:

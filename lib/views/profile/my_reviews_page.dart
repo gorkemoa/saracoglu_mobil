@@ -207,194 +207,134 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
       onTap: () => _navigateToProduct(comment),
       child: Container(
         margin: EdgeInsets.only(bottom: AppSpacing.md),
-        padding: EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: AppRadius.borderRadiusMD,
+          border: Border.all(color: AppColors.border),
           boxShadow: AppShadows.shadowSM,
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ürün bilgisi
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: AppRadius.borderRadiusSM,
-                  child: Image.network(
-                    comment.productImage,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 60,
-                      height: 60,
-                      color: AppColors.background,
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        color: AppColors.textTertiary,
+            Padding(
+              padding: EdgeInsets.all(AppSpacing.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Ürün Resmi
+                  ClipRRect(
+                    borderRadius: AppRadius.borderRadiusSM,
+                    child: Image.network(
+                      comment.productImage,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 80,
+                        height: 80,
+                        color: AppColors.background,
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          color: AppColors.textTertiary,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        comment.productTitle,
-                        style: AppTypography.labelMedium.copyWith(
-                          fontWeight: FontWeight.w600,
+                  SizedBox(width: AppSpacing.md),
+                  // Ürün Bilgileri ve Rating
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          comment.productTitle,
+                          style: AppTypography.bodySmall.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4),
-                      // Rating
-                      Row(
-                        children: [
-                          ...List.generate(
-                            5,
-                            (i) => Icon(
-                              Icons.star_rounded,
-                              size: 16,
-                              color: i < comment.commentRating
-                                  ? AppColors.accent
-                                  : AppColors.border,
+                        SizedBox(height: AppSpacing.xs),
+                        // Tarih
+                        Text(
+                          'Tarih: ${comment.commentDate}',
+                          style: AppTypography.labelSmall.copyWith(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        SizedBox(height: AppSpacing.sm),
+                        // Rating
+                        Row(
+                          children: [
+                            ...List.generate(
+                              5,
+                              (i) => Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: i < comment.commentRating
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (comment.isApproved) ...[
+                          SizedBox(height: 4),
+                          Text(
+                            'Yorum Onaylandı',
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          SizedBox(width: 8),
+                        ] else ...[
+                          SizedBox(height: 4),
                           Text(
-                            '${comment.commentRating}/5',
+                            'Onay Bekliyor',
                             style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.textSecondary,
+                              color: AppColors.warning,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: AppSpacing.md),
-
-            // Yorum içeriği
-            Container(
-              padding: EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: AppRadius.borderRadiusSM,
-              ),
-              child: Text(
-                comment.commentDesc,
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textPrimary,
-                  height: 1.5,
-                ),
-              ),
-            ),
-            SizedBox(height: AppSpacing.md),
-
-            // Alt bilgiler
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Tarih
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_outlined,
-                      size: 14,
-                      color: AppColors.textTertiary,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      comment.commentDate,
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-                // Onay durumu
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: comment.isApproved
-                        ? AppColors.success.withOpacity(0.1)
-                        : AppColors.warning.withOpacity(0.1),
-                    borderRadius: AppRadius.borderRadiusSM,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        comment.isApproved
-                            ? Icons.check_circle_outline
-                            : Icons.schedule,
-                        size: 14,
-                        color: comment.isApproved
-                            ? AppColors.success
-                            : AppColors.warning,
-                      ),
-                      SizedBox(width: 4),
-                      Text(
-                        comment.commentApproval,
-                        style: AppTypography.labelSmall.copyWith(
-                          color: comment.isApproved
-                              ? AppColors.success
-                              : AppColors.warning,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // Like/Dislike bilgisi
-            if (comment.commentLike > 0 || comment.commentDislike > 0) ...[
-              SizedBox(height: AppSpacing.sm),
-              Row(
-                children: [
-                  if (comment.commentLike > 0) ...[
-                    Icon(
-                      Icons.thumb_up_outlined,
-                      size: 14,
-                      color: AppColors.success,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      '${comment.commentLike}',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.success,
-                      ),
-                    ),
-                    SizedBox(width: AppSpacing.md),
-                  ],
-                  if (comment.commentDislike > 0) ...[
-                    Icon(
-                      Icons.thumb_down_outlined,
-                      size: 14,
-                      color: AppColors.error,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      '${comment.commentDislike}',
-                      style: AppTypography.labelSmall.copyWith(
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ],
                 ],
               ),
-            ],
+            ),
+            // Action Button
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
+              child: SizedBox(
+                height: 36,
+                child: ElevatedButton(
+                  onPressed: () => _navigateToProduct(comment),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppRadius.borderRadiusSM,
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: Text(
+                    'Ürüne Git',
+                    style: AppTypography.labelMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

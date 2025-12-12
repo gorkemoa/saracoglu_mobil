@@ -17,6 +17,7 @@ class OrderDetailProduct {
   final String productPrice;
   final String productCargoPrice;
   final String productNotes;
+  final String deliveryDate;
   final String cancelDesc;
   final String cancelDate;
   final bool isCancelable;
@@ -42,6 +43,7 @@ class OrderDetailProduct {
     required this.productPrice,
     required this.productCargoPrice,
     required this.productNotes,
+    required this.deliveryDate,
     required this.cancelDesc,
     required this.cancelDate,
     required this.isCancelable,
@@ -65,6 +67,7 @@ class OrderDetailProduct {
       cargoCompany: json['cargoCompany'] ?? '',
       isCancelReturn: json['isCancelReturn'] ?? false,
       trackingNumber: json['trackingNumber'] ?? '',
+      deliveryDate: json['deliveryDate'] ?? '',
       trackingURL: json['trackingURL'] ?? '',
       productPrice: json['productPrice'] ?? '',
       productCargoPrice: json['productCargoPrice'] ?? '',
@@ -202,11 +205,15 @@ class OrderDetail {
   final int stateOrder;
   final String orderStatusID;
   final String orderStatus;
+  final String orderCargoAmount;
   final String orderStatusColor;
+  final String orderSubTotal;
+  final String orderInstallment;
   final String orderDate;
-  final String deliveryDate;
   final String orderInvoice;
   final String salesAgreement;
+  final bool isCancelReturn;
+  final bool isCancelVisible;
   final List<OrderDetailProduct> products;
   final OrderAddresses? addresses;
   final OrderCardInfo? cardInfo;
@@ -219,13 +226,17 @@ class OrderDetail {
     required this.orderDesc,
     required this.orderPaymentType,
     required this.stateOrder,
+    required this.orderSubTotal,
+    required this.orderInstallment,
     required this.orderStatusID,
     required this.orderStatus,
+    required this.orderCargoAmount,
     required this.orderStatusColor,
     required this.orderDate,
-    required this.deliveryDate,
     required this.orderInvoice,
     required this.salesAgreement,
+    required this.isCancelReturn,
+    required this.isCancelVisible,
     required this.products,
     this.addresses,
     this.cardInfo,
@@ -240,13 +251,17 @@ class OrderDetail {
       orderDesc: json['orderDesc'] ?? '',
       orderPaymentType: json['orderPaymentType'] ?? '',
       stateOrder: json['stateOrder'] ?? 0,
+      orderSubTotal: json['orderSubTotal'] ?? '',
+      orderInstallment: json['orderInstallment'] ?? '',
       orderStatusID: json['orderStatusID']?.toString() ?? '',
       orderStatus: json['orderStatus'] ?? '',
+      orderCargoAmount: json['orderCargoAmount'] ?? '',
       orderStatusColor: json['orderStatusColor'] ?? '#000000',
       orderDate: json['orderDate'] ?? '',
-      deliveryDate: json['deliveryDate'] ?? '',
       orderInvoice: json['orderInvoice'] ?? '',
       salesAgreement: json['SalesAgreement'] ?? '',
+      isCancelReturn: json['isCancelReturn'] ?? false,
+      isCancelVisible: json['isCancelVisible'] ?? false,
       products: json['products'] != null
           ? (json['products'] as List)
                 .map((p) => OrderDetailProduct.fromJson(p))
