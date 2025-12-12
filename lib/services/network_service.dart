@@ -23,11 +23,7 @@ class NetworkResult<T> {
   });
 
   factory NetworkResult.success(T data, {int? statusCode}) {
-    return NetworkResult._(
-      data: data,
-      isSuccess: true,
-      statusCode: statusCode,
-    );
+    return NetworkResult._(data: data, isSuccess: true, statusCode: statusCode);
   }
 
   factory NetworkResult.failure(String message, {int? statusCode}) {
@@ -58,7 +54,7 @@ class NetworkService {
   );
 
   String? _authToken;
-  
+
   /// 403 hatası callback - Token geçersiz olduğunda çağrılır
   OnUnauthorizedCallback? onUnauthorized;
 
@@ -81,27 +77,26 @@ class NetworkService {
       'Accept': 'application/json',
       'Authorization': ApiConstants.basicAuthHeader, // Basic Auth (401)
     };
-    
+
     // Eğer user token varsa, Bearer token olarak ekle
     if (_authToken != null) {
       headers['X-User-Token'] = _authToken!;
     }
-    
+
     return headers;
   }
 
   /// GET isteği
   Future<NetworkResult<Map<String, dynamic>>> get(String endpoint) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-    
+
     _logger.d('📤 GET Request: $url');
-    
+
     try {
-      final response = await http
-          .get(url, headers: _headers);
+      final response = await http.get(url, headers: _headers);
 
       _logger.d('📥 GET Response [${response.statusCode}]: $endpoint');
-      
+
       return _handleResponse(response, endpoint);
     } catch (e) {
       _logger.e('❌ GET Error: $endpoint', error: e);
@@ -115,20 +110,19 @@ class NetworkService {
     Map<String, dynamic>? body,
   }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-    
+
     _logger.d('📤 POST Request: $url');
     _logger.d('📦 Body: ${jsonEncode(body)}');
-    
+
     try {
-      final response = await http
-          .post(
-            url,
-            headers: _headers,
-            body: body != null ? jsonEncode(body) : null,
-          );
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      );
 
       _logger.d('📥 POST Response [${response.statusCode}]: $endpoint');
-      
+
       return _handleResponse(response, endpoint);
     } catch (e) {
       _logger.e('❌ POST Error: $endpoint', error: e);
@@ -142,20 +136,19 @@ class NetworkService {
     Map<String, dynamic>? body,
   }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-    
+
     _logger.d('📤 PUT Request: $url');
     _logger.d('📦 Body: ${jsonEncode(body)}');
-    
+
     try {
-      final response = await http
-          .put(
-            url,
-            headers: _headers,
-            body: body != null ? jsonEncode(body) : null,
-          );
+      final response = await http.put(
+        url,
+        headers: _headers,
+        body: body != null ? jsonEncode(body) : null,
+      );
 
       _logger.d('📥 PUT Response [${response.statusCode}]: $endpoint');
-      
+
       return _handleResponse(response, endpoint);
     } catch (e) {
       _logger.e('❌ PUT Error: $endpoint', error: e);
@@ -169,12 +162,12 @@ class NetworkService {
     Map<String, dynamic>? body,
   }) async {
     final url = Uri.parse('${ApiConstants.baseUrl}$endpoint');
-    
+
     _logger.d('📤 DELETE Request: $url');
     if (body != null) {
       _logger.d('📦 Body: ${jsonEncode(body)}');
     }
-    
+
     try {
       final response = await http.delete(
         url,
@@ -183,7 +176,7 @@ class NetworkService {
       );
 
       _logger.d('📥 DELETE Response [${response.statusCode}]: $endpoint');
-      
+
       return _handleResponse(response, endpoint);
     } catch (e) {
       _logger.e('❌ DELETE Error: $endpoint', error: e);
@@ -200,7 +193,7 @@ class NetworkService {
 
     try {
       final Map<String, dynamic> jsonData = jsonDecode(response.body);
-      
+
       _logger.d('📄 Response Body: ${response.body}');
 
       // 401 hatası - Unauthorized (Basic Auth hatası)
@@ -225,10 +218,11 @@ class NetworkService {
 
       // 417 hatası - Expectation Failed (Backend'den gelen hata mesajı)
       if (statusCode == 417) {
-        final message = jsonData['error_message'] ?? 
-                        jsonData['message'] ?? 
-                        jsonData['data']?['message'] ?? 
-                        'Bir hata oluştu';
+        final message =
+            jsonData['error_message'] ??
+            jsonData['message'] ??
+            jsonData['data']?['message'] ??
+            'Bir hata oluştu';
         _logger.w('⚠️ 417 Validation Error: $message');
         return NetworkResult.failure(message, statusCode: statusCode);
       }
@@ -240,15 +234,20 @@ class NetworkService {
       }
 
       // Diğer hatalar
-      final message = jsonData['message'] ?? 
-                      jsonData['data']?['message'] ?? 
-                      'Bir hata oluştu';
+      final message =
+          jsonData['message'] ??
+          jsonData['data']?['message'] ??
+          'Bir hata oluştu';
       _logger.w('⚠️ Error [$statusCode]: $message');
       return NetworkResult.failure(message, statusCode: statusCode);
     } catch (e) {
       _logger.e('❌ Response Parse Error: $endpoint', error: e);
+      _logger.e(
+        '📄 Raw Response Body (First 500 chars): ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}',
+      );
+
       return NetworkResult.failure(
-        'Yanıt işlenirken hata oluştu',
+        'Yanıt işlenirken hata oluştu (Sunucu hatası olabilir)',
         statusCode: statusCode,
       );
     }

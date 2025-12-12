@@ -7,12 +7,11 @@ class OrderDetailProduct {
   final String productImage;
   final int productStatus;
   final String productStatusText;
-  final String productStatusName;
-  final String productStatusColor;
   final int productQuantity;
   final int productCancelQuantity;
   final int productCurrentQuantity;
   final String cargoCompany;
+  final bool isCancelReturn;
   final String trackingNumber;
   final String trackingURL;
   final String productPrice;
@@ -33,12 +32,11 @@ class OrderDetailProduct {
     required this.productImage,
     required this.productStatus,
     required this.productStatusText,
-    required this.productStatusName,
-    required this.productStatusColor,
     required this.productQuantity,
     required this.productCancelQuantity,
     required this.productCurrentQuantity,
     required this.cargoCompany,
+    required this.isCancelReturn,
     required this.trackingNumber,
     required this.trackingURL,
     required this.productPrice,
@@ -61,12 +59,11 @@ class OrderDetailProduct {
       productImage: json['productImage'] ?? '',
       productStatus: json['productStatus'] ?? 0,
       productStatusText: json['productStatusText'] ?? '',
-      productStatusName: json['productStatusName'] ?? '',
-      productStatusColor: json['productStatusColor'] ?? '#000000',
       productQuantity: json['productQuantity'] ?? 0,
       productCancelQuantity: json['productCancelQuantity'] ?? 0,
       productCurrentQuantity: json['productCurrentQuantity'] ?? 0,
       cargoCompany: json['cargoCompany'] ?? '',
+      isCancelReturn: json['isCancelReturn'] ?? false,
       trackingNumber: json['trackingNumber'] ?? '',
       trackingURL: json['trackingURL'] ?? '',
       productPrice: json['productPrice'] ?? '',
@@ -209,8 +206,6 @@ class OrderDetail {
   final String orderDate;
   final String deliveryDate;
   final String orderInvoice;
-  final bool isCanceled;
-  final bool isCancelVisible;
   final String salesAgreement;
   final List<OrderDetailProduct> products;
   final OrderAddresses? addresses;
@@ -230,8 +225,6 @@ class OrderDetail {
     required this.orderDate,
     required this.deliveryDate,
     required this.orderInvoice,
-    required this.isCanceled,
-    required this.isCancelVisible,
     required this.salesAgreement,
     required this.products,
     this.addresses,
@@ -253,8 +246,6 @@ class OrderDetail {
       orderDate: json['orderDate'] ?? '',
       deliveryDate: json['deliveryDate'] ?? '',
       orderInvoice: json['orderInvoice'] ?? '',
-      isCanceled: json['isCanceled'] ?? false,
-      isCancelVisible: json['isCancelVisible'] ?? false,
       salesAgreement: json['SalesAgreement'] ?? '',
       products: json['products'] != null
           ? (json['products'] as List)

@@ -1,3 +1,4 @@
+import '../../models/order/order_status_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/order/user_order_model.dart';
@@ -19,6 +20,7 @@ class _OrdersPageState extends State<OrdersPage> {
   bool _isLoading = true;
   String? _errorMessage;
   UserOrdersResponse? _ordersResponse;
+  List<OrderStatusModel> _statusList = [];
   int? _selectedStatusFilter;
   String _searchQuery = '';
 
@@ -45,16 +47,36 @@ class _OrdersPageState extends State<OrdersPage> {
       _errorMessage = null;
     });
 
-    final response = await _orderService.getOrders();
+    try {
+      // Future.wait ile paralel istek at (Performans artışı)
+      final results = await Future.wait([
+        _orderService.getOrders(),
+        _orderService.getOrderStatusList(),
+      ]);
 
-    setState(() {
-      _isLoading = false;
-      if (response.isSuccess) {
-        _ordersResponse = response;
-      } else {
-        _errorMessage = response.message;
-      }
-    });
+      final ordersResponse = results[0] as UserOrdersResponse;
+      final statusResponse = results[1] as OrderStatusListResponse;
+
+      setState(() {
+        _isLoading = false;
+
+        if (ordersResponse.isSuccess) {
+          _ordersResponse = ordersResponse;
+        } else {
+          _errorMessage = ordersResponse.message;
+        }
+
+        if (statusResponse.isSuccess) {
+          _statusList = statusResponse.statusList;
+        }
+        // Status listesi kritik hata sebebi değil, orders geldiyse devam et
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Veriler yüklenirken bir hata oluştu';
+      });
+    }
   }
 
   List<UserOrder> get _allOrders => _ordersResponse?.orders ?? [];
@@ -115,8 +137,8 @@ class _OrdersPageState extends State<OrdersPage> {
           onPressed: () => Navigator.pop(context),
           icon: Icon(
             Icons.arrow_back_ios,
-            color: AppColors.textSecondary,
-            size: AppSizes.iconXS, // 16px - Reduced
+            size: 20,
+            color: AppColors.textPrimary,
           ),
         ),
         title: Text(
@@ -560,11 +582,11 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildStatusLegend() {
-    if (_ordersResponse == null) {
+    if (_statusList.isEmpty) {
       return SizedBox.shrink();
     }
 
-    final statusTitles = _ordersResponse!.statusTitles;
+    final statusTitles = _statusList;
 
     return Container(
       height: 40, // Reduced from 48

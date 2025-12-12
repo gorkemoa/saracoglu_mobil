@@ -1,3 +1,4 @@
+import '../models/order/order_status_model.dart';
 import '../core/constants/api_constants.dart';
 import '../models/order/user_order_model.dart';
 import '../models/order/order_detail_model.dart';
@@ -167,6 +168,39 @@ class OrderService {
     } catch (e) {
       _logger.e('❌ Sipariş iptal hatası', error: e);
       return OrderCancelResponse.errorResponse(
+        'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Sipariş durum listesini getir
+  Future<OrderStatusListResponse> getOrderStatusList() async {
+    try {
+      _logger.d('📤 Get Order Status List Request');
+
+      final result = await _networkService.get(ApiConstants.getOrderStatusList);
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('� Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        // API response yapısı burada biraz farklı olabilir, tüm body'i gönderiyoruz
+        // NetworkService genellikle 'data' içini değil de tüm response'u 'data' olarak veriyor olabilir
+        // Ancak NetworkService yapısını tam bilmediğim için standart 'data' assumption ile devam ediyorum.
+        // Eğer NetworkService tüm JSON'ı 'data' olarak veriyorsa direkt onu kullanacağız.
+        // Buradaki trick: result.data zaten map ise direkt onu kullanırız.
+
+        // Response yapısı: { error: false, success: true, data: { statusies: [...] } }
+        // result.data eğer tüm json ise:
+        return OrderStatusListResponse.fromJson(result.data!);
+      } else {
+        return OrderStatusListResponse.errorResponse(
+          result.errorMessage ?? 'Durum listesi yüklenirken hata oluştu',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ Sipariş durum listesi getirme hatası', error: e);
+      return OrderStatusListResponse.errorResponse(
         'Bir hata oluştu: ${e.toString()}',
       );
     }

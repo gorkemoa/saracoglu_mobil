@@ -81,8 +81,7 @@ class HomeContentState extends State<HomeContent> {
 
     if (mounted) {
       setState(() {
-        _unreadNotificationCount =
-            notifications.where((n) => !n.isRead).length;
+        _unreadNotificationCount = notifications.where((n) => !n.isRead).length;
       });
     }
   }
@@ -389,7 +388,6 @@ class HomeContentState extends State<HomeContent> {
     );
   }
 
-
   Widget _buildSearchBar() {
     return GestureDetector(
       onTap: widget.onSearchTap,
@@ -523,7 +521,7 @@ class HomeContentState extends State<HomeContent> {
                 ),
               ),
               SizedBox(width: AppSpacing.sm),
-              Text("BAŞLICA KATEGORİLERİMİZ", style: AppTypography.h4),
+              Text("BAŞLICA KATEGORİLERİMİZ", style: AppTypography.h5),
             ],
           ),
           SizedBox(height: AppSpacing.lg),

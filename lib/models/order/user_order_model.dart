@@ -172,41 +172,11 @@ class UserOrder {
       products.fold(0, (sum, product) => sum + product.productCancelQuantity);
 }
 
-/// Sipariş durumu modeli
-class OrderStatusTitle {
-  final int statusID;
-  final String statusName;
-  final String statusColor;
-
-  OrderStatusTitle({
-    required this.statusID,
-    required this.statusName,
-    required this.statusColor,
-  });
-
-  factory OrderStatusTitle.fromJson(Map<String, dynamic> json) {
-    return OrderStatusTitle(
-      statusID: json['statusID'] ?? 0,
-      statusName: json['statusName'] ?? '',
-      statusColor: json['statusColor'] ?? '#000000',
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'statusID': statusID,
-      'statusName': statusName,
-      'statusColor': statusColor,
-    };
-  }
-}
-
 /// Kullanıcı siparişleri response modeli
 class UserOrdersResponse {
   final bool isSuccess;
   final String? message;
   final String? emptyMessage;
-  final List<OrderStatusTitle> statusTitles;
   final int totalOrders;
   final List<UserOrder> orders;
 
@@ -214,7 +184,6 @@ class UserOrdersResponse {
     required this.isSuccess,
     this.message,
     this.emptyMessage,
-    required this.statusTitles,
     required this.totalOrders,
     required this.orders,
   });
@@ -227,7 +196,6 @@ class UserOrdersResponse {
       return UserOrdersResponse(
         isSuccess: isSuccess,
         message: json['message'],
-        statusTitles: [],
         totalOrders: 0,
         orders: [],
       );
@@ -237,11 +205,7 @@ class UserOrdersResponse {
       isSuccess: isSuccess,
       message: data['message'],
       emptyMessage: data['emptyMessage'],
-      statusTitles: data['statusTitles'] != null
-          ? (data['statusTitles'] as List)
-                .map((s) => OrderStatusTitle.fromJson(s))
-                .toList()
-          : [],
+
       totalOrders: data['totalOrders'] ?? 0,
       orders: data['orders'] != null
           ? (data['orders'] as List).map((o) => UserOrder.fromJson(o)).toList()
@@ -253,7 +217,6 @@ class UserOrdersResponse {
     return UserOrdersResponse(
       isSuccess: false,
       message: message,
-      statusTitles: [],
       totalOrders: 0,
       orders: [],
     );
