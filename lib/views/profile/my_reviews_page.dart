@@ -203,140 +203,410 @@ class _MyReviewsPageState extends State<MyReviewsPage> {
   }
 
   Widget _buildCommentCard(UserComment comment) {
-    return GestureDetector(
-      onTap: () => _navigateToProduct(comment),
-      child: Container(
-        margin: EdgeInsets.only(bottom: AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: AppRadius.borderRadiusMD,
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.shadowSM,
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Ürün Resmi
-                  ClipRRect(
-                    borderRadius: AppRadius.borderRadiusSM,
-                    child: Image.network(
-                      comment.productImage,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 80,
-                        height: 80,
-                        color: AppColors.background,
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          color: AppColors.textTertiary,
+    return Container(
+      margin: EdgeInsets.only(bottom: AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusMD,
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.shadowSM,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Ürün Resmi
+                    GestureDetector(
+                      onTap: () => _navigateToProduct(comment),
+                      child: ClipRRect(
+                        borderRadius: AppRadius.borderRadiusSM,
+                        child: Image.network(
+                          comment.productImage,
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 70,
+                            height: 70,
+                            color: AppColors.background,
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(width: AppSpacing.md),
-                  // Ürün Bilgileri ve Rating
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          comment.productTitle,
-                          style: AppTypography.bodySmall.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: AppSpacing.xs),
-                        // Tarih
-                        Text(
-                          'Tarih: ${comment.commentDate}',
-                          style: AppTypography.labelSmall.copyWith(
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                        SizedBox(height: AppSpacing.sm),
-                        // Rating
-                        Row(
-                          children: [
-                            ...List.generate(
-                              5,
-                              (i) => Icon(
-                                Icons.star_rounded,
-                                size: 16,
-                                color: i < comment.commentRating
-                                    ? AppColors.primary
-                                    : AppColors.border,
+                    SizedBox(width: AppSpacing.md),
+                    // Ürün Bilgileri ve Rating
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          GestureDetector(
+                            onTap: () => _navigateToProduct(comment),
+                            child: Text(
+                              comment.productTitle,
+                              style: AppTypography.bodySmall.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
                               ),
-                            ),
-                          ],
-                        ),
-                        if (comment.isApproved) ...[
-                          SizedBox(height: 4),
-                          Text(
-                            'Yorum Onaylandı',
-                            style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.success,
-                              fontWeight: FontWeight.w500,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ] else ...[
                           SizedBox(height: 4),
+                          // Rating
+                          Row(
+                            children: [
+                              ...List.generate(
+                                5,
+                                (i) => Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: i < comment.commentRating
+                                      ? AppColors.primary
+                                      : AppColors.border,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                '${comment.commentRating}/5',
+                                style: AppTypography.labelSmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          // Tarih
                           Text(
-                            'Onay Bekliyor',
+                            comment.commentDate,
                             style: AppTypography.labelSmall.copyWith(
-                              color: AppColors.warning,
-                              fontWeight: FontWeight.w500,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                          Text(
+                            comment.commentApproval,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.primaryDark,
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            // Action Button
-            Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(
-                AppSpacing.md,
-                0,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
-              child: SizedBox(
-                height: 36,
-                child: ElevatedButton(
-                  onPressed: () => _navigateToProduct(comment),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: AppRadius.borderRadiusSM,
-                    ),
-                    padding: EdgeInsets.zero,
+              // Menu Button
+              Positioned(
+                top: 4,
+                right: 4,
+                child: PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: AppColors.textTertiary,
+                    size: 20,
                   ),
-                  child: Text(
-                    'Ürüne Git',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _editComment(comment);
+                    } else if (value == 'delete') {
+                      _deleteComment(comment);
+                    }
+                  },
+                  itemBuilder: (BuildContext context) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18),
+                          SizedBox(width: 8),
+                          Text('Düzenle'),
+                        ],
+                      ),
                     ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.error,
+                          ),
+                          SizedBox(width: 8),
+                          Text('Sil', style: TextStyle(color: AppColors.error)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Yorum İçeriği (Eğer varsa)
+          if (comment.commentDesc.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: AppRadius.borderRadiusSM,
+                ),
+                child: Text(
+                  comment.commentDesc,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+
+          SizedBox(height: AppSpacing.md),
+
+          // Action Button
+          Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacing.md,
+              right: AppSpacing.md,
+              bottom: AppSpacing.md,
+            ),
+            child: SizedBox(
+              height: 36,
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _navigateToProduct(comment),
+                icon: Icon(
+                  Icons.storefront_outlined,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                label: Text(
+                  'Ürüne Git',
+                  style: AppTypography.labelMedium.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.borderRadiusSM,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editComment(UserComment comment) {
+    int _rating = comment.commentRating;
+    bool _showName = comment.showName;
+    final TextEditingController _controller = TextEditingController(
+      text: comment.commentDesc,
+    );
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (innerContext, setState) {
+          return AlertDialog(
+            title: Text('Yorumu Düzenle', style: AppTypography.h4),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Puanınız', style: AppTypography.labelMedium),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          Icons.star_rounded,
+                          color: index < _rating
+                              ? AppColors.primary
+                              : AppColors.border,
+                          size: 32,
+                        ),
+                        onPressed: () {
+                          setState(() => _rating = index + 1);
+                        },
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(),
+                      );
+                    }),
+                  ),
+                  SizedBox(height: 16),
+                  Text('Yorumunuz', style: AppTypography.labelMedium),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: _controller,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'Ürün hakkında düşünceleriniz...',
+                      border: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusSM,
+                      ),
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: Checkbox(
+                          value: _showName,
+                          onChanged: (val) {
+                            setState(() => _showName = val ?? true);
+                          },
+                          activeColor: AppColors.primary,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text('İsmim yorumda görünsün'),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(
+                  'İptal',
+                  style: TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  if (_rating == 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Lütfen puan seçiniz')),
+                    );
+                    return;
+                  }
+
+                  Navigator.pop(dialogContext); // Dialog'u kapat
+
+                  // Loading göster
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (c) => Center(child: CircularProgressIndicator()),
+                  );
+
+                  final success = await _commentService.updateComment(
+                    productID: comment.productID,
+                    commentID: comment.commentID,
+                    comment: _controller.text,
+                    commentRating: _rating,
+                    showName: _showName,
+                  );
+
+                  if (mounted) {
+                    Navigator.of(context).pop(); // Loading'i kapat
+
+                    if (success) {
+                      _loadComments(); // Listeyi yenile
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Yorumunuz güncellendi'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Güncelleme başarısız oldu'),
+                          backgroundColor: AppColors.error,
+                        ),
+                      );
+                    }
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: Text('Güncelle'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _deleteComment(UserComment comment) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Yorumu Sil', style: AppTypography.h4),
+        content: Text('Bu yorumu silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              'İptal',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); // Dialog'u kapat
+
+              // Loading göster
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (c) => Center(child: CircularProgressIndicator()),
+              );
+
+              final success = await _commentService.deleteComment(
+                comment.commentID,
+              );
+
+              if (mounted) {
+                Navigator.of(context).pop(); // Loading'i kapat
+
+                if (success) {
+                  _loadComments(); // Listeyi yenile
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Yorum silindi'),
+                      backgroundColor: AppColors.success,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Silme işlemi başarısız oldu'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text('Sil', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
       ),
     );
   }

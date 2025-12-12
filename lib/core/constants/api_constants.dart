@@ -39,6 +39,12 @@ class ApiConstants {
   /// deleteUser endpoint
   static const String deleteUser = 'service/user/account/delete';
 
+  /// getSavedCards endpoint
+  static const String getUserSavedCards = 'service/user/account/card/list';
+
+  /// deleteSavedCard endpoint
+  static const String deleteSavedCard = 'service/user/account/card/delete';
+
   /// getNotifications endpoint - kullanımı: '${ApiConstants.getNotifications}/$userId/notifications'
   static const String getNotifications = 'service/user/account';
 
@@ -101,6 +107,8 @@ class ApiConstants {
   /// Comment Endpoints
   static const String getUserComments = 'service/user/account/comment/list';
   static const String addComment = 'service/user/account/comment/add';
+  static const String updateComment = 'service/user/account/comment/update';
+  static const String deleteComment = 'service/user/account/comment/delete';
 
   /// Basket Endpoints
   static const String addToBasket = 'service/user/account/basket/add';

@@ -49,10 +49,8 @@ class UserComment {
   }
 
   /// Onay durumu
-  bool get isApproved => commentApproval == 'Onaylandı';
 
   /// Beklemede mi
-  bool get isPending => commentApproval == 'Beklemede';
 }
 
 /// Kullanıcı yorumları response modeli

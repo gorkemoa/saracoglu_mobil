@@ -8,6 +8,8 @@ import '../services/favorite_service.dart';
 import '../services/basket_service.dart';
 import '../models/product/product_model.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_html/flutter_html.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Ürün Detay Sayfası
 class ProductDetailPage extends StatefulWidget {
@@ -54,29 +56,32 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     super.dispose();
   }
 
-  /// HTML etiketlerini temizle
-  String _stripHtmlTags(String htmlString) {
-    // Remove HTML tags
-    final RegExp htmlTagRegExp = RegExp(
-      r'<[^>]*>',
-      multiLine: true,
-      caseSensitive: true,
+  /// HTML içeriği oluştur
+  Widget _buildHtmlContent(String htmlContent) {
+    return Html(
+      data: htmlContent,
+      style: {
+        "body": Style(
+          margin: Margins.zero,
+          padding: HtmlPaddings.zero,
+          fontFamily: AppTypography.bodyMedium.fontFamily,
+          fontSize: FontSize(AppTypography.bodyMedium.fontSize ?? 14),
+          color: AppColors.textSecondary,
+          lineHeight: LineHeight(1.5),
+        ),
+        "ul": Style(padding: HtmlPaddings.only(left: 10)),
+        "li": Style(listStyleType: ListStyleType.disc),
+        "p": Style(margin: Margins.only(bottom: 8)),
+      },
+      onLinkTap: (url, _, __) async {
+        if (url != null) {
+          final uri = Uri.parse(url);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+      },
     );
-    String text = htmlString.replaceAll(htmlTagRegExp, '');
-
-    // Decode common HTML entities
-    text = text.replaceAll('&nbsp;', ' ');
-    text = text.replaceAll('&amp;', '&');
-    text = text.replaceAll('&lt;', '<');
-    text = text.replaceAll('&gt;', '>');
-    text = text.replaceAll('&quot;', '"');
-    text = text.replaceAll('&#39;', "'");
-    text = text.replaceAll('&apos;', "'");
-
-    // Clean up extra whitespace
-    text = text.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    return text;
   }
 
   /// Ürün detayını API'den yükle
@@ -595,13 +600,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
             if (product.productDescription.isNotEmpty)
-              Text(
-                _stripHtmlTags(product.productDescription),
-                style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              )
+              _buildHtmlContent(product.productDescription)
             else
               Text(
                 'Ürün açıklaması bulunmamaktadır.',

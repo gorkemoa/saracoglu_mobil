@@ -4,52 +4,74 @@ class PaymentRequest {
   final String userToken;
   final int shipAddressID;
   final int billAddressID;
-  final String cardHolderName;
-  final String cardNumber;
-  final String expireMonth;
-  final String expireYear;
-  final String cvv;
-  final String cardType; // axess, paraf, bonus vs.
+  final String? cardHolderName;
+  final String? cardNumber;
+  final String? expireMonth;
+  final String? expireYear;
+  final String? cvv;
+  final String? cardType; // axess, paraf, bonus vs.
   final double price;
   final int installment; // 1 = Tek Çekim
   final int forceThreeDS; // Taksit bilgisi sorgulanırken gelen değer
   final int payWith3D; // 3D ödeme isteyip istemediği - 1 veya 0
   final int saveCard; // Kartı kaydetmek isteyip istemediği - 1 veya 0
+  final String? ctoken; // Kayıtlı kart token'ı
+  final int savedCardPay; // Kayıtlı karttan ödeme ise 1, değilse 0
+  final int requireCvv; // Kayıtlı karttan gelen require_cvv değeri
 
   PaymentRequest({
     required this.userToken,
     required this.shipAddressID,
     required this.billAddressID,
-    required this.cardHolderName,
-    required this.cardNumber,
-    required this.expireMonth,
-    required this.expireYear,
-    required this.cvv,
-    required this.cardType,
+    this.cardHolderName,
+    this.cardNumber,
+    this.expireMonth,
+    this.expireYear,
+    this.cvv,
+    this.cardType,
     required this.price,
     this.installment = 1,
     this.forceThreeDS = 0,
     this.payWith3D = 0,
     this.saveCard = 0,
+    this.ctoken,
+    this.savedCardPay = 0,
+    this.requireCvv = 0,
   });
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> data = {
       'userToken': userToken,
       'shipAddressID': shipAddressID,
       'billAddressID': billAddressID,
-      'cardHolderName': cardHolderName,
-      'cardNumber': cardNumber,
-      'expireMonth': expireMonth,
-      'expireYear': expireYear,
-      'cvv': cvv,
-      'cardType': cardType,
       'price': price,
       'installment': installment,
       'forcethreeds': forceThreeDS,
       'payWith3D': payWith3D,
       'saveCard': saveCard,
+      'savedCardPay': savedCardPay,
+      'requireCvv': requireCvv,
     };
+
+    if (savedCardPay == 1) {
+      // Kayıtlı kart ödemesi
+      if (ctoken != null) data['ctoken'] = ctoken;
+
+      // Eğer requireCvv 1 ise, CVV'yi ekle
+      if (requireCvv == 1 && cvv != null) {
+        data['cvv'] = cvv;
+      }
+    } else {
+      // Yeni kart ödemesi
+      data['cardHolderName'] = cardHolderName;
+      data['cardNumber'] = cardNumber;
+      data['expireMonth'] = expireMonth;
+      data['expireYear'] = expireYear;
+      data['cvv'] = cvv;
+      data['cardType'] = cardType;
+    }
+
+    return data;
   }
 }
 

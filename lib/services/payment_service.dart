@@ -1,6 +1,7 @@
 import '../core/constants/api_constants.dart';
 import '../models/payment/payment_request_model.dart';
 import '../models/payment/sales_agreement_model.dart';
+import '../models/user/saved_card_model.dart';
 import 'network_service.dart';
 import 'auth_service.dart';
 import 'package:logger/logger.dart';
@@ -93,17 +94,20 @@ class PaymentService {
   Future<PaymentResponse> requestPayment({
     required int shipAddressID,
     required int billAddressID,
-    required String cardHolderName,
-    required String cardNumber,
-    required String expireMonth,
-    required String expireYear,
-    required String cvv,
-    required String cardType,
+    String? cardHolderName,
+    String? cardNumber,
+    String? expireMonth,
+    String? expireYear,
+    String? cvv,
+    String? cardType,
     required double price,
     int installment = 1,
     int forceThreeDS = 0,
     bool payWith3D = false,
     bool saveCard = false,
+    String? ctoken,
+    int savedCardPay = 0,
+    int requireCvv = 0,
   }) async {
     try {
       final token = _authService.currentUser?.token;
@@ -115,9 +119,15 @@ class PaymentService {
       _logger.d(
         '📦 Ship Address: $shipAddressID, Bill Address: $billAddressID',
       );
-      _logger.d('📦 Card Type: $cardType, Installment: $installment');
       _logger.d('📦 Price: $price TL');
       _logger.d('📦 3D Secure: $payWith3D, Save Card: $saveCard');
+
+      if (ctoken != null) {
+        _logger.d('📦 Using Saved Card Token: $ctoken');
+        _logger.d('📦 Saved Card Pay: $savedCardPay, Require CVV: $requireCvv');
+      } else {
+        _logger.d('📦 Card Type: $cardType, Installment: $installment');
+      }
 
       final request = PaymentRequest(
         userToken: token,
@@ -134,6 +144,9 @@ class PaymentService {
         forceThreeDS: forceThreeDS,
         payWith3D: payWith3D ? 1 : 0,
         saveCard: saveCard ? 1 : 0,
+        ctoken: ctoken,
+        savedCardPay: savedCardPay,
+        requireCvv: requireCvv,
       );
 
       final result = await _networkService.post(
@@ -261,7 +274,9 @@ class PaymentService {
       }
 
       _logger.d('📤 Get Sales Agreement Request');
-      _logger.d('📦 Ship Address: $shipAddressID, Bill Address: $billAddressID');
+      _logger.d(
+        '📦 Ship Address: $shipAddressID, Bill Address: $billAddressID',
+      );
 
       final result = await _networkService.get(
         '${ApiConstants.getSalesAgreement}?userToken=$token&shipAddressID=$shipAddressID&billAddressID=$billAddressID',
@@ -281,6 +296,91 @@ class PaymentService {
       _logger.e('❌ Sözleşme yükleme hatası', error: e);
       return SalesAgreementResponse.errorResponse(
         'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Kayıtlı kartları getir
+  Future<SavedCardResponseModel> getSavedCards() async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return SavedCardResponseModel(
+          error: true,
+          success: false,
+          message: 'Oturum açmanız gerekiyor',
+        );
+      }
+
+      _logger.d('📤 Get Info User Cards');
+
+      final result = await _networkService.get(
+        '${ApiConstants.getUserSavedCards}?userToken=$token',
+      );
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        return SavedCardResponseModel.fromJson(result.data!);
+      } else {
+        return SavedCardResponseModel(
+          error: true,
+          success: false,
+          message: result.errorMessage ?? 'Kartlar yüklenemedi',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ Kart listesi hatası', error: e);
+      return SavedCardResponseModel(
+        error: true,
+        success: false,
+        message: 'Bir hata oluştu: ${e.toString()}',
+      );
+    }
+  }
+
+  /// Kart sil
+  Future<SavedCardResponseModel> deleteSavedCard(String ctoken) async {
+    try {
+      final token = _authService.currentUser?.token;
+      if (token == null) {
+        return SavedCardResponseModel(
+          error: true,
+          success: false,
+          message: 'Oturum açmanız gerekiyor',
+        );
+      }
+
+      _logger.d('📤 Delete User Card Request');
+      _logger.d('📦 Card Token: $ctoken');
+
+      final result = await _networkService.post(
+        ApiConstants.deleteSavedCard,
+        body: {'userToken': token, 'ctoken': ctoken},
+      );
+
+      _logger.d('📥 Response Status: ${result.statusCode}');
+      _logger.d('📥 Response Data: ${result.data}');
+
+      if (result.isSuccess && result.data != null) {
+        // Response format might be generic error/success wrapper, reused SavedCardResponseModel if structure matches or created a generic one.
+        // Based on other methods, assuming it returns standard structure that can be parsed or at least status.
+        // If the delete endpoint returns just success/error, we might want a simpler model, but reuse is fine for basic success check.
+        return SavedCardResponseModel.fromJson(result.data!);
+      } else {
+        return SavedCardResponseModel(
+          error: true,
+          success: false,
+          message: result.errorMessage ?? 'Kart silinemedi',
+        );
+      }
+    } catch (e) {
+      _logger.e('❌ Kart silme hatası', error: e);
+      return SavedCardResponseModel(
+        error: true,
+        success: false,
+        message: 'Bir hata oluştu: ${e.toString()}',
       );
     }
   }

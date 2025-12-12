@@ -50,4 +50,71 @@ class CommentService {
       return null;
     }
   }
+
+  /// Yorum güncelle
+  Future<bool> updateComment({
+    required int productID,
+    required int commentID,
+    required String comment,
+    required int commentRating,
+    bool showName = true,
+  }) async {
+    try {
+      if (_userToken.isEmpty) return false;
+
+      final body = {
+        "userToken": _userToken,
+        "productID": productID,
+        "commentID": commentID,
+        "comment": comment,
+        "commentRating": commentRating,
+        "showName": showName,
+      };
+
+      final result = await _networkService.put(
+        ApiConstants.updateComment,
+        body: body,
+      );
+
+      if (result.isSuccess && result.data != null) {
+        final success = result.data!['success'] == true;
+        if (success) {
+          _logger.i('✅ Yorum güncellendi');
+        }
+        return success;
+      }
+
+      return false;
+    } catch (e) {
+      _logger.e('❌ Yorum güncelleme hatası', error: e);
+      return false;
+    }
+  }
+
+  /// Yorum sil
+  Future<bool> deleteComment(int commentID) async {
+    try {
+      if (_userToken.isEmpty) return false;
+
+      final body = {"userToken": _userToken, "commentID": commentID};
+
+      final result = await _networkService.delete(
+        ApiConstants.deleteComment,
+        body: body,
+      );
+
+      if (result.isSuccess && result.data != null) {
+        final success = result.data!['success'] == true;
+        if (success) {
+          _logger.i('✅ Yorum silindi');
+        }
+        return success;
+      }
+
+      return false;
+    } catch (e) {
+      _logger.e('❌ Yorum silme hatası', error: e);
+      return false;
+    }
+  }
 }

@@ -6,6 +6,7 @@ import '../models/address/user_address_model.dart';
 import '../models/basket/basket_model.dart';
 import '../models/payment/payment_request_model.dart';
 import '../models/payment/sales_agreement_model.dart';
+import '../models/user/saved_card_model.dart';
 import '../services/payment_service.dart';
 import '../services/address_service.dart';
 import '../widgets/add_address_sheet.dart';
@@ -64,12 +65,37 @@ class _PaymentPageState extends State<PaymentPage> {
   InstallmentResponse? _installmentResponse;
   List<InstallmentOption> _installmentOptions = [];
   CardDetail? _cardDetail;
+
   String? _lastQueriedBin;
+
+  // Kayıtlı Kartlar State
+  bool _useSavedCard = false;
+  List<SavedCardModel> _savedCards = [];
+  SavedCardModel? _selectedSavedCard;
+  bool _isLoadingSavedCards = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserAddresses();
+    _fetchSavedCards();
+  }
+
+  Future<void> _fetchSavedCards() async {
+    setState(() => _isLoadingSavedCards = true);
+    final response = await _paymentService.getSavedCards();
+    if (mounted) {
+      setState(() {
+        _isLoadingSavedCards = false;
+        if (response.success &&
+            response.data != null &&
+            response.data!.isNotEmpty) {
+          _savedCards = response.data!;
+          // Varsayılan olarak kayıtlı kart varsa ilkini seçmeyebiliriz veya kullanıcıya bırakırız.
+          // _useSavedCard = true; // İstersek otomatik açabiliriz
+        }
+      });
+    }
   }
 
   /// Kullanıcı adreslerini yükle
@@ -114,8 +140,23 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   /// Ödeme işlemini başlat - önce sözleşme onayı kontrolü
+  /// Ödeme işlemini başlat - önce sözleşme onayı kontrolü
   Future<void> _processPayment() async {
-    if (!_formKey.currentState!.validate()) return;
+    // Kayıtlı kart kullanmıyorsak form validasyonu yap
+    if (!_useSavedCard) {
+      if (!_formKey.currentState!.validate()) return;
+    } else {
+      if (_selectedSavedCard == null) {
+        _showErrorSnackBar('Lütfen bir kayıtlı kart seçin');
+        return;
+      }
+      // Eğer kayıtlı kart seçiliyse ve CVV zorunluysa kontrol et
+      if (_selectedSavedCard!.requireCvv == '1' &&
+          _cvvController.text.isEmpty) {
+        _showErrorSnackBar('Lütfen CVV kodunu giriniz');
+        return;
+      }
+    }
 
     // Adres kontrolü
     if (widget.shipAddress == null) {
@@ -139,20 +180,41 @@ class _PaymentPageState extends State<PaymentPage> {
     setState(() => _isLoading = true);
     HapticFeedback.mediumImpact();
 
-    final response = await _paymentService.requestPayment(
-      shipAddressID: widget.shipAddress!.addressID,
-      billAddressID: _effectiveBillAddressID,
-      cardHolderName: _cardHolderController.text.trim(),
-      cardNumber: _cardNumberController.text.replaceAll(' ', ''),
-      expireMonth: _expireMonthController.text.trim(),
-      expireYear: _expireYearController.text.trim(),
-      cvv: _cvvController.text.trim(),
-      cardType: _cardType,
-      price: widget.totalPrice,
-      installment: _selectedInstallment,
-      payWith3D: _payWith3D,
-      saveCard: _saveCard,
-    );
+    PaymentResponse response;
+
+    if (_useSavedCard && _selectedSavedCard != null) {
+      // Kayıtlı kart ile ödeme
+      response = await _paymentService.requestPayment(
+        shipAddressID: widget.shipAddress!.addressID,
+        billAddressID: _effectiveBillAddressID,
+        price: widget.totalPrice,
+        ctoken: _selectedSavedCard!.ctoken,
+        cvv: _selectedSavedCard!.requireCvv == '1'
+            ? _cvvController.text.trim()
+            : null,
+        payWith3D: _payWith3D,
+        savedCardPay: 1,
+        requireCvv: int.tryParse(_selectedSavedCard!.requireCvv ?? '0') ?? 0,
+      );
+    } else {
+      // Yeni kart ile ödeme
+      response = await _paymentService.requestPayment(
+        shipAddressID: widget.shipAddress!.addressID,
+        billAddressID: _effectiveBillAddressID,
+        cardHolderName: _cardHolderController.text.trim(),
+        cardNumber: _cardNumberController.text.replaceAll(' ', ''),
+        expireMonth: _expireMonthController.text.trim(),
+        expireYear: _expireYearController.text.trim(),
+        cvv: _cvvController.text.trim(),
+        cardType: _cardType,
+        price: widget.totalPrice,
+        installment: _selectedInstallment,
+        payWith3D: _payWith3D,
+        saveCard: _saveCard,
+        savedCardPay: 0,
+        requireCvv: 0,
+      );
+    }
 
     setState(() => _isLoading = false);
 
@@ -481,8 +543,17 @@ class _PaymentPageState extends State<PaymentPage> {
                 _buildBillAddressSection(),
                 SizedBox(height: AppSpacing.sm),
 
-                // Kart Bilgileri
-                _buildCardSection(),
+                // Kart Bilgileri ve Kayıtlı Kartlar
+                if (_savedCards.isNotEmpty) ...[
+                  _buildPaymentMethodTabs(),
+                  SizedBox(height: AppSpacing.md),
+                ],
+
+                if (_useSavedCard)
+                  _buildSavedCardsList()
+                else
+                  _buildCardSection(),
+
                 SizedBox(height: AppSpacing.sm),
 
                 // Taksit Seçenekleri
@@ -993,9 +1064,7 @@ class _PaymentPageState extends State<PaymentPage> {
               if (cardNumber.length < 16) {
                 return 'Geçerli bir kart numarası giriniz';
               }
-              if (!_paymentService.validateCardNumber(cardNumber)) {
-                return 'Geçersiz kart numarası';
-              }
+
               return null;
             },
           ),
@@ -1473,35 +1542,199 @@ class _PaymentPageState extends State<PaymentPage> {
                 );
               }).toList(),
             ),
+          ],
+        ],
+      ),
+    );
+  }
 
-            // Seçili taksit detayı
-            if (_selectedInstallment > 1) ...[
-              SizedBox(height: AppSpacing.md),
-              Container(
-                padding: EdgeInsets.all(AppSpacing.sm),
+  Widget _buildPaymentMethodTabs() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusSM,
+        boxShadow: AppShadows.shadowCard,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () => setState(() => _useSavedCard = false),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
-                  borderRadius: AppRadius.borderRadiusSM,
+                  color: !_useSavedCard
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.transparent,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: !_useSavedCard
+                          ? AppColors.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Toplam Ödenecek:',
-                      style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      '₺${_installmentOptions.firstWhere((e) => e.count == _selectedInstallment).totalPayment.toStringAsFixed(2)}',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  'Yeni Kart',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: !_useSavedCard
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: !_useSavedCard
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
                 ),
               ),
-            ],
+            ),
+          ),
+          Expanded(
+            child: InkWell(
+              onTap: () => setState(() => _useSavedCard = true),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: _useSavedCard
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.transparent,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: _useSavedCard
+                          ? AppColors.primary
+                          : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                child: Text(
+                  'Kayıtlı Kartlarım',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: _useSavedCard
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: _useSavedCard
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSavedCardsList() {
+    return Container(
+      padding: EdgeInsets.all(AppSpacing.sm),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.borderRadiusSM,
+        boxShadow: AppShadows.shadowCard,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Kayıtlı Kart Seçin', style: AppTypography.labelLarge),
+          SizedBox(height: AppSpacing.md),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: NeverScrollableScrollPhysics(),
+            itemCount: _savedCards.length,
+            separatorBuilder: (context, index) => Divider(height: 1),
+            itemBuilder: (context, index) {
+              final card = _savedCards[index];
+              final isSelected = _selectedSavedCard?.ctoken == card.ctoken;
+
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedSavedCard = card;
+                    // CVV gerekip gerekmediğini kontrol et, gerekirse field temizle
+                    _cvvController.clear();
+                  });
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary.withOpacity(0.05)
+                        : null,
+                    borderRadius: AppRadius.borderRadiusXS,
+                  ),
+                  child: Row(
+                    children: [
+                      Radio<String>(
+                        value: card.ctoken ?? '',
+                        groupValue: _selectedSavedCard?.ctoken,
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedSavedCard = card;
+                            _cvvController.clear();
+                          });
+                        },
+                        activeColor: AppColors.primary,
+                      ),
+                      Icon(Icons.credit_card, color: AppColors.textSecondary),
+                      SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${card.cBrand} - ${card.cBank}',
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '**** **** **** ${card.last4}',
+                              style: AppTypography.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          if (_selectedSavedCard != null &&
+              _selectedSavedCard!.requireCvv == '1') ...[
+            SizedBox(height: AppSpacing.md),
+            Divider(),
+            SizedBox(height: AppSpacing.sm),
+            Text(
+              'Güvenlik Kodu (CVV)',
+              style: AppTypography.labelMedium.copyWith(color: AppColors.error),
+            ),
+            SizedBox(height: AppSpacing.xs),
+            SizedBox(
+              width: 100,
+              child: TextFormField(
+                controller: _cvvController,
+                keyboardType: TextInputType.number,
+                maxLength: 4, // 3 veya 4
+                decoration: InputDecoration(
+                  hintText: '***',
+                  counterText: '',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 0,
+                  ),
+                ),
+                onChanged: (val) {
+                  //
+                },
+              ),
+            ),
           ],
         ],
       ),
@@ -1781,13 +2014,13 @@ class _PaymentPageState extends State<PaymentPage> {
                   SizedBox(width: AppSpacing.sm),
                   Text('Güvenli Ödeme Yap', style: AppTypography.buttonLarge),
                   SizedBox(width: AppSpacing.sm),
-                  if (totalPayment != "0.00" )
-                  Text(
-                    '₺$totalPayment',
-                    style: AppTypography.buttonLarge.copyWith(
-                      fontWeight: FontWeight.w400,
+                  if (totalPayment != "0.00")
+                    Text(
+                      '₺$totalPayment',
+                      style: AppTypography.buttonLarge.copyWith(
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
-                  ),
                 ],
               ),
       ),
