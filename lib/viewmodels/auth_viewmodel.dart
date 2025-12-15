@@ -5,11 +5,16 @@ import '../models/auth/login_model.dart';
 import '../models/auth/register_model.dart';
 import '../models/user/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/social_auth_service.dart';
+import '../models/auth/social_login_request.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dart:io';
 
 /// Auth ViewModel
 /// Login, Register ve Auth işlemlerini yöneten ViewModel
 class AuthViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final SocialAuthService _socialAuthService = SocialAuthService();
 
   // State
   bool _isLoading = false;
@@ -59,10 +64,7 @@ class AuthViewModel extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      final request = LoginRequest(
-        userName: userName,
-        password: password,
-      );
+      final request = LoginRequest(userName: userName, password: password);
 
       final response = await _authService.login(request);
 
@@ -157,4 +159,131 @@ class AuthViewModel extends ChangeNotifier {
 
   /// Bekleyen doğrulama var mı?
   bool get hasPendingVerification => _authService.hasPendingVerification;
+
+  /// Google ile giriş
+  Future<bool> loginWithGoogle() async {
+    clearState();
+    _setLoading(true);
+
+    try {
+      final googleUser = await _socialAuthService.signInWithGoogle();
+
+      if (googleUser == null) {
+        // Kullanıcı iptal etti veya hata
+        _setLoading(false);
+        return false;
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final accessToken = googleAuth.idToken;
+
+      if (accessToken == null) {
+        _setLoading(false);
+        _setError('Google erişim anahtarı alınamadı');
+        return false;
+      }
+
+      // Cihaz bilgilerini al
+      final deviceData = await _getDeviceInfo();
+
+      final request = SocialLoginRequest(
+        platform: 'google',
+        deviceID: deviceData['deviceId'] ?? 'unknown',
+        devicePlatform: Platform.isIOS ? 'ios' : 'android',
+        version: AppConstants.appVersion,
+        accessToken: accessToken,
+        fcmToken: 'dummy_fcm_token', // TODO: FCM token entegrasyonu yapılmalı
+        idToken: googleAuth.idToken,
+      );
+
+      final response = await _authService.loginSocial(request);
+
+      _setLoading(false);
+
+      if (response.isSuccess) {
+        _setSuccess();
+        return true;
+      } else {
+        _setError(response.data?.message ?? 'Google ile giriş başarısız');
+        return false;
+      }
+    } catch (e) {
+      _setLoading(false);
+      _setError('Bir hata oluştu: ${e.toString()}');
+      return false;
+    }
+  }
+
+  /// Apple ile giriş
+  Future<bool> loginWithApple() async {
+    clearState();
+    _setLoading(true);
+
+    try {
+      final credential = await _socialAuthService.signInWithApple();
+
+      if (credential == null) {
+        _setLoading(false);
+        return false;
+      }
+
+      final idToken = credential.identityToken;
+      final authCode = credential.authorizationCode;
+
+      if (idToken == null) {
+        _setLoading(false);
+        _setError('Apple kimlik anahtarı alınamadı');
+        return false;
+      }
+
+      // Cihaz bilgilerini al
+      final deviceData = await _getDeviceInfo();
+
+      final request = SocialLoginRequest(
+        platform: 'apple',
+        deviceID: deviceData['deviceId'] ?? 'unknown',
+        devicePlatform: Platform.isIOS ? 'ios' : 'android',
+        version: AppConstants.appVersion,
+        accessToken:
+            authCode, // Apple için auth code'u access token olarak gönderiyoruz
+        idToken: idToken,
+        fcmToken: 'dummy_fcm_token',
+      );
+
+      final response = await _authService.loginSocial(request);
+
+      _setLoading(false);
+
+      if (response.isSuccess) {
+        _setSuccess();
+        return true;
+      } else {
+        _setError(response.data?.message ?? 'Apple ile giriş başarısız');
+        return false;
+      }
+    } catch (e) {
+      _setLoading(false);
+      _setError('Bir hata oluştu: ${e.toString()}');
+      return false;
+    }
+  }
+
+  Future<Map<String, String>> _getDeviceInfo() async {
+    final deviceInfoPlugin = DeviceInfoPlugin();
+    final deviceData = <String, String>{};
+
+    try {
+      if (Platform.isAndroid) {
+        final androidInfo = await deviceInfoPlugin.androidInfo;
+        deviceData['deviceId'] = androidInfo.id;
+      } else if (Platform.isIOS) {
+        final iosInfo = await deviceInfoPlugin.iosInfo;
+        deviceData['deviceId'] = iosInfo.identifierForVendor ?? 'unknown';
+      }
+    } catch (e) {
+      deviceData['deviceId'] = 'unknown';
+    }
+
+    return deviceData;
+  }
 }

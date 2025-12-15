@@ -72,7 +72,6 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _useSavedCard = false;
   List<SavedCardModel> _savedCards = [];
   SavedCardModel? _selectedSavedCard;
-  bool _isLoadingSavedCards = false;
 
   @override
   void initState() {
@@ -82,11 +81,9 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<void> _fetchSavedCards() async {
-    setState(() => _isLoadingSavedCards = true);
     final response = await _paymentService.getSavedCards();
     if (mounted) {
       setState(() {
-        _isLoadingSavedCards = false;
         if (response.success &&
             response.data != null &&
             response.data!.isNotEmpty) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
 import '../../theme/app_theme.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../services/auth_service.dart';
@@ -325,6 +326,145 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                   ),
                 ),
+
+                SizedBox(height: AppSpacing.xxl),
+
+                SizedBox(height: AppSpacing.lg),
+
+                // Sosyal Medya ile Giriş
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: AppColors.border)),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: Text(
+                        'veya',
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: AppColors.border)),
+                  ],
+                ),
+
+                SizedBox(height: AppSpacing.lg),
+
+                // Google ile Giriş
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            setState(() => _isLoading = true);
+                            // AuthViewModel yeni instance oluşturuluyor, bu sayfada provider yoksa mecbur.
+                            // Eğer main.dart'ta provider varsa context.read<AuthViewModel> yapılmalı ama
+                            // burada setState kullanılmış ve viewmodel yerel gibi duruyor.
+                            // AuthViewModel login sayfasında nasıl kullanılmış?
+                            // Line 79: final authViewModel = AuthViewModel();
+                            // Evet yerel oluşturuluyor.
+                            final authViewModel = AuthViewModel();
+                            final success = await authViewModel
+                                .loginWithGoogle();
+                            setState(() => _isLoading = false);
+
+                            if (success && mounted) {
+                              Navigator.pop(context, true);
+                            } else if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    authViewModel.errorMessage ??
+                                        'Google ile giriş başarısız',
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                  margin: EdgeInsets.all(AppSpacing.md),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: AppRadius.borderRadiusSM,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: AppColors.border),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                      ),
+                      foregroundColor: AppColors.textPrimary,
+                    ),
+                    icon: Image.asset(
+                      'assets/google.png',
+                      width: 40,
+                      height: 40,
+                    ),
+                    label: Text(
+                      'Google ile Giriş Yap',
+                      style: AppTypography.buttonMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (Platform.isIOS) ...[
+                  SizedBox(height: AppSpacing.md),
+                  // Apple ile Giriş
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              setState(() => _isLoading = true);
+                              final authViewModel = AuthViewModel();
+                              final success = await authViewModel
+                                  .loginWithApple();
+                              setState(() => _isLoading = false);
+
+                              if (success && mounted) {
+                                Navigator.pop(context, true);
+                              } else if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      authViewModel.errorMessage ??
+                                          'Apple ile giriş başarısız',
+                                    ),
+                                    backgroundColor: AppColors.error,
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: EdgeInsets.all(AppSpacing.md),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: AppRadius.borderRadiusSM,
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                        side: BorderSide(color: Colors.black),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.borderRadiusMD,
+                        ),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: Icon(Icons.apple, color: Colors.white, size: 24),
+                      label: Text(
+                        'Apple ile Giriş Yap',
+                        style: AppTypography.buttonMedium.copyWith(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
 
                 SizedBox(height: AppSpacing.xxl),
 

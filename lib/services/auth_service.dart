@@ -13,6 +13,7 @@ import '../models/user/update_user_model.dart';
 import '../models/user/update_password_model.dart';
 import '../models/user/delete_user_model.dart';
 import 'network_service.dart';
+import '../models/auth/social_login_request.dart';
 import '../views/auth/login_page.dart';
 
 /// SharedPreferences keys
@@ -151,6 +152,68 @@ class AuthService extends ChangeNotifier {
           // Credentials'ı kaydet (kalıcı oturum)
           await _saveCredentials(response.data!.userID, response.data!.token);
 
+          notifyListeners();
+        }
+
+        return response;
+      } else {
+        // Hata durumu - API'den gelen mesajı döndür
+        return LoginResponse(
+          error: true,
+          success: false,
+          data: LoginData(
+            status: 'error',
+            message: result.errorMessage ?? 'Giriş başarısız',
+            userID: 0,
+            token: '',
+          ),
+        );
+      }
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+
+      return LoginResponse(
+        error: true,
+        success: false,
+        data: LoginData(
+          status: 'error',
+          message: 'Bir hata oluştu: ${e.toString()}',
+          userID: 0,
+          token: '',
+        ),
+      );
+    }
+  }
+
+  /// Sosyal Medya ile giriş yap
+  Future<LoginResponse> loginSocial(SocialLoginRequest request) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _networkService.post(
+        ApiConstants.loginSocial,
+        body: request.toJson(),
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess && result.data != null) {
+        final response = LoginResponse.fromJson(result.data!);
+
+        if (response.isSuccess && response.data != null) {
+          // Token'ı network service'e kaydet
+          _networkService.setAuthToken(response.data!.token);
+
+          // Kullanıcı modelini oluştur
+          _currentUser = UserModel(
+            id: response.data!.userID,
+            token: response.data!.token,
+          );
+
+          // Credentials'ı kaydet (kalıcı oturum)
+          await _saveCredentials(response.data!.userID, response.data!.token);
 
           notifyListeners();
         }
@@ -188,8 +251,6 @@ class AuthService extends ChangeNotifier {
 
   /// Çıkış yap
   Future<void> logout() async {
-  
-    
     await _clearStoredCredentials();
     _currentUser = null;
     _pendingCodeToken = null;

@@ -43,6 +43,10 @@ dependencies:
   firebase_core: ^4.2.1
   firebase_messaging: ^16.0.4
   share_plus: ^10.1.4
+  google_sign_in: ^6.2.1
+  sign_in_with_apple:
+  flutter_facebook_auth:
+  device_info_plus:
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +75,7 @@ flutter:
     - assets/kategorileri/
     - assets/bot/
     - assets/logo.png
+    - assets/google.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
