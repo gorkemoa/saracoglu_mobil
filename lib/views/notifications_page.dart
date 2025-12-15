@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../services/notification_service.dart';
 import '../services/auth_service.dart';
+import '../services/navigation_service.dart';
 import '../models/notification/notification_model.dart';
 
 class NotificationsPage extends StatefulWidget {
@@ -15,6 +16,7 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   final NotificationService _notificationService = NotificationService();
   final AuthService _authService = AuthService();
+  final NavigationService _navigationService = NavigationService();
 
   List<NotificationModel> _notifications = [];
   bool _isLoading = true;
@@ -333,25 +335,42 @@ class _NotificationsPageState extends State<NotificationsPage> {
     Color iconColor;
 
     switch (notification.type) {
-      case 'order_ready':
-        iconData = Icons.shopping_bag;
-        iconColor = AppColors.success;
-        break;
+      case 'order_created':
+      case 'order_processing':
       case 'order_shipped':
-        iconData = Icons.local_shipping;
-        iconColor = AppColors.info;
-        break;
       case 'order_delivered':
-        iconData = Icons.check_circle;
-        iconColor = AppColors.success;
+      case 'return_requested':
+      case 'return_approved':
+      case 'return_rejected':
+      case 'return_received':
+      case 'order_ready': // Keep existing just in case
+        iconData = Icons.local_shipping;
+        iconColor = AppColors.primary;
+        if (notification.type.contains('delivered') ||
+            notification.type == 'return_approved' ||
+            notification.type == 'return_received') {
+          iconColor = AppColors.success;
+          iconData = Icons.check_circle;
+        } else if (notification.type.contains('rejected')) {
+          iconColor = AppColors.error;
+          iconData = Icons.cancel;
+        }
         break;
-      case 'promotion':
+      case 'campaign':
         iconData = Icons.local_offer;
-        iconColor = AppColors.error;
+        iconColor = AppColors.warning;
+        break;
+      case 'product':
+        iconData = Icons.shopping_bag;
+        iconColor = AppColors.primary;
+        break;
+      case 'marketing':
+        iconData = Icons.campaign;
+        iconColor = AppColors.info;
         break;
       default:
         iconData = Icons.notifications;
-        iconColor = AppColors.primary;
+        iconColor = AppColors.textSecondary;
     }
 
     return Dismissible(
@@ -374,7 +393,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
         _deleteNotification(notification);
       },
       child: GestureDetector(
-        onTap: () => _markAsRead(notification),
+        onTap: () {
+          _markAsRead(notification);
+          _navigationService.handleNotificationTap(context, notification);
+        },
         child: Container(
           decoration: BoxDecoration(
             color: isUnread

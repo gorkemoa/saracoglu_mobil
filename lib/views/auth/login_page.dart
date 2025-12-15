@@ -118,91 +118,65 @@ class _LoginPageState extends State<LoginPage> {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(height: AppSpacing.xl),
+                SizedBox(height: AppSpacing.xxl * 3),
 
-                // Geri butonu
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: AppRadius.borderRadiusSM,
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Icon(
-                      Icons.arrow_back_ios_new,
-                      size: 18,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: AppSpacing.xxl),
-
-                // Hoş geldin metni
-                Text(
-                  'Hoş Geldiniz',
-                  style: AppTypography.h1.copyWith(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-
-                SizedBox(height: AppSpacing.sm),
-
-                Text(
-                  'Hesabınıza giriş yaparak alışverişe başlayın',
-                  style: AppTypography.bodyLarge.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
+                // Logo
+                Image.asset('assets/logo.png', height: 50, fit: BoxFit.contain),
 
                 SizedBox(height: AppSpacing.xxl + AppSpacing.lg),
 
                 // Kullanıcı adı
-                Text(
-                  'Kullanıcı Adı',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Kullanıcı Adı',
+                    style: AppTypography.labelMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 SizedBox(height: AppSpacing.sm),
-                TextField(
-                  controller: _usernameController,
-                  keyboardType: TextInputType.text,
-                  textInputAction: TextInputAction.next,
-                  style: AppTypography.bodyLarge,
-                  decoration: InputDecoration(
-                    hintText: 'Kullanıcı adınızı girin',
-                    hintStyle: AppTypography.bodyLarge.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.md + 4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadius.borderRadiusMD,
+                    boxShadow: AppShadows.shadowSM,
+                  ),
+                  child: TextField(
+                    controller: _usernameController,
+                    keyboardType: TextInputType.text,
+                    textInputAction: TextInputAction.next,
+                    style: AppTypography.bodyLarge,
+                    decoration: InputDecoration(
+                      hintText: 'Kullanıcı adınızı girin',
+                      hintStyle: AppTypography.bodyLarge.copyWith(
+                        color: AppColors.textTertiary,
+                      ),
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md + 4,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -211,55 +185,66 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: AppSpacing.lg),
 
                 // Şifre
-                Text(
-                  'Şifre',
-                  style: AppTypography.labelMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Şifre',
+                    style: AppTypography.labelMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 SizedBox(height: AppSpacing.sm),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _login(),
-                  style: AppTypography.bodyLarge,
-                  decoration: InputDecoration(
-                    hintText: '••••••••',
-                    hintStyle: AppTypography.bodyLarge.copyWith(
-                      color: AppColors.textTertiary,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                      vertical: AppSpacing.md + 4,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadius.borderRadiusMD,
-                      borderSide: BorderSide(
-                        color: AppColors.primary,
-                        width: 2,
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadius.borderRadiusMD,
+                    boxShadow: AppShadows.shadowSM,
+                  ),
+                  child: TextField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _login(),
+                    style: AppTypography.bodyLarge,
+                    decoration: InputDecoration(
+                      hintText: '••••••••',
+                      hintStyle: AppTypography.bodyLarge.copyWith(
+                        color: AppColors.textTertiary,
                       ),
-                    ),
-                    suffixIcon: IconButton(
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: AppColors.textSecondary,
-                        size: 22,
+                      filled: true,
+                      fillColor: Colors.transparent,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                        vertical: AppSpacing.md + 4,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: AppRadius.borderRadiusMD,
+                        borderSide: BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
+                      ),
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: AppColors.textSecondary,
+                          size: 22,
+                        ),
                       ),
                     ),
                   ),
@@ -276,6 +261,7 @@ class _LoginPageState extends State<LoginPage> {
                       padding: EdgeInsets.zero,
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: AppColors.primary,
                     ),
                     child: Text(
                       'Şifremi Unuttum',
@@ -290,20 +276,29 @@ class _LoginPageState extends State<LoginPage> {
                 SizedBox(height: AppSpacing.xxl),
 
                 // Giriş Yap Butonu
-                SizedBox(
+                Container(
                   width: double.infinity,
                   height: 56,
+                  decoration: BoxDecoration(
+                    borderRadius: AppRadius.borderRadiusMD,
+                    gradient: AppColors.primaryGradient,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: Colors.transparent,
                       foregroundColor: Colors.white,
+                      shadowColor: Colors.transparent,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.borderRadiusMD,
-                      ),
-                      disabledBackgroundColor: AppColors.primary.withOpacity(
-                        0.6,
                       ),
                     ),
                     child: _isLoading
@@ -321,7 +316,7 @@ class _LoginPageState extends State<LoginPage> {
                             'Giriş Yap',
                             style: AppTypography.buttonLarge.copyWith(
                               color: Colors.white,
-                              fontSize: 16,
+                              fontSize: 18,
                             ),
                           ),
                   ),
@@ -329,102 +324,68 @@ class _LoginPageState extends State<LoginPage> {
 
                 SizedBox(height: AppSpacing.xxl),
 
-                SizedBox(height: AppSpacing.lg),
-
-                // Sosyal Medya ile Giriş
+                // Sosyal Medya Ayırıcı
                 Row(
                   children: [
-                    Expanded(child: Divider(color: AppColors.border)),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.transparent, AppColors.border],
+                          ),
+                        ),
+                      ),
+                    ),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
                       child: Text(
                         'veya',
                         style: AppTypography.bodySmall.copyWith(
                           color: AppColors.textTertiary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                    Expanded(child: Divider(color: AppColors.border)),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.border, Colors.transparent],
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
 
-                SizedBox(height: AppSpacing.lg),
+                SizedBox(height: AppSpacing.xl),
 
                 // Google ile Giriş
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton.icon(
-                    onPressed: _isLoading
-                        ? null
-                        : () async {
-                            setState(() => _isLoading = true);
-                            // AuthViewModel yeni instance oluşturuluyor, bu sayfada provider yoksa mecbur.
-                            // Eğer main.dart'ta provider varsa context.read<AuthViewModel> yapılmalı ama
-                            // burada setState kullanılmış ve viewmodel yerel gibi duruyor.
-                            // AuthViewModel login sayfasında nasıl kullanılmış?
-                            // Line 79: final authViewModel = AuthViewModel();
-                            // Evet yerel oluşturuluyor.
-                            final authViewModel = AuthViewModel();
-                            final success = await authViewModel
-                                .loginWithGoogle();
-                            setState(() => _isLoading = false);
-
-                            if (success && mounted) {
-                              Navigator.pop(context, true);
-                            } else if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    authViewModel.errorMessage ??
-                                        'Google ile giriş başarısız',
-                                  ),
-                                  backgroundColor: AppColors.error,
-                                  behavior: SnackBarBehavior.floating,
-                                  margin: EdgeInsets.all(AppSpacing.md),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: AppRadius.borderRadiusSM,
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppColors.border),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.borderRadiusMD,
-                      ),
-                      foregroundColor: AppColors.textPrimary,
-                    ),
-                    icon: Image.asset(
-                      'assets/google.png',
-                      width: 40,
-                      height: 40,
-                    ),
-                    label: Text(
-                      'Google ile Giriş Yap',
-                      style: AppTypography.buttonMedium.copyWith(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
-                      ),
-                    ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: AppRadius.borderRadiusMD,
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: AppShadows.shadowSM,
                   ),
-                ),
-
-                if (Platform.isIOS) ...[
-                  SizedBox(height: AppSpacing.md),
-                  // Apple ile Giriş
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoading
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _isLoading
                           ? null
                           : () async {
                               setState(() => _isLoading = true);
+                              // AuthViewModel yeni instance oluşturuluyor, bu sayfada provider yoksa mecbur.
+                              // Eğer main.dart'ta provider varsa context.read<AuthViewModel> yapılmalı ama
+                              // burada setState kullanılmış ve viewmodel yerel gibi duruyor.
+                              // AuthViewModel login sayfasında nasıl kullanılmış?
+                              // Line 79: final authViewModel = AuthViewModel();
+                              // Evet yerel oluşturuluyor.
                               final authViewModel = AuthViewModel();
                               final success = await authViewModel
-                                  .loginWithApple();
+                                  .loginWithGoogle();
                               setState(() => _isLoading = false);
 
                               if (success && mounted) {
@@ -434,7 +395,7 @@ class _LoginPageState extends State<LoginPage> {
                                   SnackBar(
                                     content: Text(
                                       authViewModel.errorMessage ??
-                                          'Apple ile giriş başarısız',
+                                          'Google ile giriş başarısız',
                                     ),
                                     backgroundColor: AppColors.error,
                                     behavior: SnackBarBehavior.floating,
@@ -446,20 +407,97 @@ class _LoginPageState extends State<LoginPage> {
                                 );
                               }
                             },
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        side: BorderSide(color: Colors.black),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: AppRadius.borderRadiusMD,
+                      borderRadius: AppRadius.borderRadiusMD,
+                      child: Container(
+                        height: 56,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
                         ),
-                        foregroundColor: Colors.white,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/google.png',
+                              width: 40,
+                              height: 40,
+                            ),
+                            SizedBox(width: AppSpacing.md),
+                            Text(
+                              'Google ile Giriş Yap',
+                              style: AppTypography.buttonMedium.copyWith(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      icon: Icon(Icons.apple, color: Colors.white, size: 24),
-                      label: Text(
-                        'Apple ile Giriş Yap',
-                        style: AppTypography.buttonMedium.copyWith(
-                          color: Colors.white,
-                          fontSize: 16,
+                    ),
+                  ),
+                ),
+
+                if (Platform.isIOS) ...[
+                  SizedBox(height: AppSpacing.md),
+                  // Apple ile Giriş
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: AppRadius.borderRadiusMD,
+                      boxShadow: AppShadows.shadowSM,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _isLoading
+                            ? null
+                            : () async {
+                                setState(() => _isLoading = true);
+                                final authViewModel = AuthViewModel();
+                                final success = await authViewModel
+                                    .loginWithApple();
+                                setState(() => _isLoading = false);
+
+                                if (success && mounted) {
+                                  Navigator.pop(context, true);
+                                } else if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        authViewModel.errorMessage ??
+                                            'Apple ile giriş başarısız',
+                                      ),
+                                      backgroundColor: AppColors.error,
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: EdgeInsets.all(AppSpacing.md),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: AppRadius.borderRadiusSM,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                        borderRadius: AppRadius.borderRadiusMD,
+                        child: Container(
+                          height: 56,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.lg,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.apple, color: Colors.white, size: 28),
+                              SizedBox(width: AppSpacing.md),
+                              Text(
+                                'Apple ile Giriş Yap',
+                                style: AppTypography.buttonMedium.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),

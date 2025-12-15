@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../models/auth/send_verification_code_model.dart';
 import 'auth/login_page.dart';
 import 'auth/code_verification_page.dart';
+import 'main_screen.dart'; // Added MainScreen import
 import 'profile/orders_page.dart';
 import 'profile/cargo_tracking_page.dart';
 import 'profile/returns_page.dart';
@@ -101,19 +102,26 @@ class ProfilePageState extends State<ProfilePage> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: AppRadius.borderRadiusMD),
-        title: Text('Çıkış Yap', style: AppTypography.h4),
+        contentPadding: EdgeInsets.all(AppSpacing.lg),
+        title: Center(child: Text('Çıkış Yap', style: AppTypography.h4)),
         content: Text(
           'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
           style: AppTypography.bodyMedium,
+          textAlign: TextAlign.center,
         ),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
+          OutlinedButton(
             onPressed: () => Navigator.pop(context, false),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: AppColors.textSecondary),
+            ),
             child: Text(
               'İptal',
               style: TextStyle(color: AppColors.textSecondary),
             ),
           ),
+          SizedBox(width: AppSpacing.sm),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
@@ -129,6 +137,12 @@ class ProfilePageState extends State<ProfilePage> {
     if (confirmed == true) {
       await _authService.logout();
       if (mounted) {
+        // Anasayfaya yönlendir ve tüm stack'i temizle
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+          (route) => false,
+        );
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Başarıyla çıkış yapıldı'),

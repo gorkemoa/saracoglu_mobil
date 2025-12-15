@@ -394,12 +394,6 @@ class SearchPageState extends State<SearchPage> {
                         color: Colors.grey.shade600,
                         size: 20,
                       ),
-                    )
-                  else
-                    Icon(
-                      Icons.camera_alt_outlined,
-                      color: Colors.grey.shade600,
-                      size: 20,
                     ),
                 ],
               ),

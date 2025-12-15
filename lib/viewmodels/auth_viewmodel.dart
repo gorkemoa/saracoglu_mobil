@@ -10,6 +10,8 @@ import '../models/auth/social_login_request.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 
+import 'package:package_info_plus/package_info_plus.dart';
+
 /// Auth ViewModel
 /// Login, Register ve Auth işlemlerini yöneten ViewModel
 class AuthViewModel extends ChangeNotifier {
@@ -109,7 +111,7 @@ class AuthViewModel extends ChangeNotifier {
         userName: userName,
         userEmail: email,
         userPassword: password,
-        version: AppConstants.appVersion,
+        version: await _getAppVersion(),
         platform: AppConstants.platform,
       );
 
@@ -190,7 +192,7 @@ class AuthViewModel extends ChangeNotifier {
         platform: 'google',
         deviceID: deviceData['deviceId'] ?? 'unknown',
         devicePlatform: Platform.isIOS ? 'ios' : 'android',
-        version: AppConstants.appVersion,
+        version: await _getAppVersion(),
         accessToken: accessToken,
         fcmToken: 'dummy_fcm_token', // TODO: FCM token entegrasyonu yapılmalı
         idToken: googleAuth.idToken,
@@ -243,7 +245,7 @@ class AuthViewModel extends ChangeNotifier {
         platform: 'apple',
         deviceID: deviceData['deviceId'] ?? 'unknown',
         devicePlatform: Platform.isIOS ? 'ios' : 'android',
-        version: AppConstants.appVersion,
+        version: await _getAppVersion(),
         accessToken:
             authCode, // Apple için auth code'u access token olarak gönderiyoruz
         idToken: idToken,
@@ -285,5 +287,11 @@ class AuthViewModel extends ChangeNotifier {
     }
 
     return deviceData;
+  }
+
+  /// Uygulama versiyonunu getir
+  Future<String> _getAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.version;
   }
 }

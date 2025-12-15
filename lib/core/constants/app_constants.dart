@@ -6,7 +6,6 @@ class AppConstants {
   AppConstants._();
 
   /// Uygulama versiyonu
-  static const String appVersion = '1.0.0';
 
   /// Platform bilgisi (dinamik)
   static String get platform {
@@ -23,8 +22,6 @@ class AppConstants {
     }
     return 'unknown';
   }
-
-
 
   /// Paket adı
 }
